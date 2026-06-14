@@ -29,8 +29,7 @@ hash-keyed do-not-contact gate.
 **Suppression is the residue that is _not_ a membership.** A subscriber *list*
 (who is on `<list>`) is a flat membership edge or host data. Suppression is an
 **anti-membership** — an entry with no member and no resource that says "never
-contact this hash" and must persist *after* the subject is deleted. That is why it
-is its own component, not a `@vllnt/convex-memberships` edge.
+contact this hash" and must persist *after* the subject is deleted.
 
 ## Features
 
@@ -149,9 +148,7 @@ a server-side `isEligible` gate before a send and webhook-driven `suppress` writ
 — there is no user-facing management surface a hook would serve. A reactive
 do-not-contact badge, if ever needed, is an ordinary `useQuery` over the host's own
 re-exported `isSuppressed` ref (which returns live in Convex), so a dedicated hook
-would add a wrapper with no value over the host's existing `api`. If a future
-consumer needs a shared management surface the analysis will be re-run (per the
-Component Standard's front-end tooling decision).
+would add a wrapper with no value over the host's existing `api`.
 
 ## Security Model
 
