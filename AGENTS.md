@@ -15,7 +15,12 @@ The host hashes a contact and passes the opaque `contactHash`; the component sto
 `(contactHash, channel)` anti-membership tombstone that says "never contact this hash" and survives
 erasure of the subject. A sender calls `isEligible` before every send; an unsubscribe / bounce /
 complaint calls `suppress`; a double-opt-in confirmation calls `recordOptIn`. It follows the vllnt
-Component Standard (see the `convex-components` hub `.claude/rules/component-standard.md`).
+Component Standard (see the `oss-packages` hub `AGENTS.md`).
+
+## Agent instructions
+
+`AGENTS.md` is the sole agent-instruction source for this repository. Do not add
+`CLAUDE.md` or `.claude` content.
 
 ## Architecture
 
@@ -130,3 +135,9 @@ partition (e.g. a separate marketing vs. transactional do-not-contact list).
 | Any change | `pnpm generate:llms` to keep `llms-full.txt` current |
 
 Grep old values before committing (e.g. after a `peerDependencies.convex` bump, `git grep "1.41.0"` → only the new range survives).
+
+## Generated code
+
+- Every `**/_generated/**` file is owned exclusively by Convex CLI codegen.
+- Never create, edit, lint, or format generated files manually.
+- Run `pnpm codegen` to regenerate them and commit the generated output unchanged.
