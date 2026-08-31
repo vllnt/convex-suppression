@@ -32,7 +32,7 @@ export const suppress = mutation({
       .unique();
     const now = Date.now();
     if (existing !== null) {
-      await ctx.db.patch(existing._id, { reason: args.reason, createdAt: now });
+      await ctx.db.patch("suppressions", existing._id, { reason: args.reason, createdAt: now });
       return null;
     }
     await ctx.db.insert("suppressions", {
@@ -65,7 +65,7 @@ export const unsuppress = mutation({
     if (existing === null) {
       return false;
     }
-    await ctx.db.delete(existing._id);
+    await ctx.db.delete("suppressions", existing._id);
     return true;
   },
 });
@@ -99,7 +99,7 @@ export const recordOptIn = mutation({
       .unique();
     const now = Date.now();
     if (existing !== null) {
-      await ctx.db.patch(existing._id, {
+      await ctx.db.patch("optInProofs", existing._id, {
         source: args.source,
         proof: args.proof,
         confirmedAt: now,

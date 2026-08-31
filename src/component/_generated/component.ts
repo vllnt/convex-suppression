@@ -24,18 +24,20 @@ import type { FunctionReference } from "convex/server";
 export type ComponentApi<Name extends string | undefined = string | undefined> =
   {
     mutations: {
+      recordOptIn: FunctionReference<
+        "mutation",
+        "internal",
+        { contactHash: string; listKey: string; proof?: any; source: string },
+        null,
+        Name
+      >;
       suppress: FunctionReference<
         "mutation",
         "internal",
         {
           channel: string;
           contactHash: string;
-          reason:
-            | "unsubscribe"
-            | "bounce"
-            | "complaint"
-            | "manual"
-            | "global";
+          reason: "unsubscribe" | "bounce" | "complaint" | "manual" | "global";
         },
         null,
         Name
@@ -47,32 +49,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         boolean,
         Name
       >;
-      recordOptIn: FunctionReference<
-        "mutation",
-        "internal",
-        { contactHash: string; listKey: string; proof?: any; source: string },
-        null,
-        Name
-      >;
     };
     queries: {
-      isSuppressed: FunctionReference<
-        "query",
-        "internal",
-        { channel: string; contactHash: string },
-        null | {
-          channel: string | null;
-          contactHash: string;
-          createdAt: number;
-          reason:
-            | "unsubscribe"
-            | "bounce"
-            | "complaint"
-            | "manual"
-            | "global";
-        },
-        Name
-      >;
       getOptInProof: FunctionReference<
         "query",
         "internal",
@@ -96,6 +74,18 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
           requireOptIn: boolean;
         },
         boolean,
+        Name
+      >;
+      isSuppressed: FunctionReference<
+        "query",
+        "internal",
+        { channel: string; contactHash: string },
+        null | {
+          channel: string | null;
+          contactHash: string;
+          createdAt: number;
+          reason: "unsubscribe" | "bounce" | "complaint" | "manual" | "global";
+        },
         Name
       >;
     };
