@@ -45,12 +45,12 @@ channels are host-defined; reasons use the fixed union listed below.
 ## Installation
 
 ```bash
-pnpm add @vllnt/convex-suppression@canary convex@^1.45.0
+pnpm add @vllnt/convex-suppression convex@^1.45.0
 ```
 
-Peer dependency: `convex@^1.45.0`. This README follows `main` and the canary
-channel; `latest` is the separate stable release. Pin an exact canary version
-for reproducible installs.
+Peer dependency: `convex@^1.45.0`. This README follows `main`; the `canary`
+dist-tag carries pre-release builds (pin an exact canary version for
+reproducible installs).
 
 ## Quick start
 
