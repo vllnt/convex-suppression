@@ -1,8 +1,12 @@
 import { v } from "convex/values";
-import { query } from "./_generated/server";
-import { GLOBAL_CHANNEL } from "../shared";
-import { optInProofView, suppressionView } from "./validators";
-import type { Doc } from "./_generated/dataModel";
+import { query } from "./_generated/server.js";
+import { GLOBAL_CHANNEL } from "../shared.js";
+import {
+  assertNonEmpty,
+  optInProofView,
+  suppressionView,
+} from "./validators.js";
+import type { Doc } from "./_generated/dataModel.js";
 
 /** Project a stored suppression row to its public view (drops internal fields). */
 function view(row: Doc<"suppressions">) {
@@ -81,7 +85,8 @@ export const getOptInProof = query({
  * `requireOptIn` is set — has a recorded opt-in proof for `listKey`. This is the
  * single call a sender makes before every send: `¬suppressed [∧ confirmed]`.
  * Suppression always blocks; the opt-in requirement is opt-in per call (marketing
- * mail sets it; a transactional send may not).
+ * mail sets it; a transactional send may not). An empty `contactHash` or
+ * `channel` throws `INVALID_ARGUMENT` rather than answering `true`.
  */
 export const isEligible = query({
   args: {
@@ -92,6 +97,10 @@ export const isEligible = query({
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
+    // Fail closed: an empty key can never match a suppression row, so answering
+    // "eligible" for it would be a silent fail-open. Throw instead.
+    assertNonEmpty("contactHash", args.contactHash);
+    assertNonEmpty("channel", args.channel);
     const globalRow = await ctx.db
       .query("suppressions")
       .withIndex("by_hash_channel", (q) =>

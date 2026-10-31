@@ -415,3 +415,80 @@ describe("suppression — host/component table isolation", () => {
     ).not.toBeNull();
   });
 });
+
+
+describe("suppression — empty keys are rejected (fail closed)", () => {
+  const invalid = (field: string) =>
+    expect.objectContaining({ data: { code: "INVALID_ARGUMENT", field } });
+
+  test("suppress rejects an empty contactHash or channel and writes nothing", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.example.suppress, { contactHash: "", reason: "manual" }),
+    ).rejects.toEqual(invalid("contactHash"));
+    await expect(
+      t.mutation(api.example.suppress, {
+        contactHash: "h",
+        reason: "manual",
+        channel: "",
+      }),
+    ).rejects.toEqual(invalid("channel"));
+    expect(
+      await t.query(api.example.isSuppressed, { contactHash: "h" }),
+    ).toBeNull();
+  });
+
+  test("recordOptIn rejects an empty contactHash, listKey, or source", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.example.recordOptIn, { contactHash: "", source: "form" }),
+    ).rejects.toEqual(invalid("contactHash"));
+    await expect(
+      t.mutation(api.example.recordOptIn, {
+        contactHash: "h",
+        source: "form",
+        listKey: "",
+      }),
+    ).rejects.toEqual(invalid("listKey"));
+    await expect(
+      t.mutation(api.example.recordOptIn, { contactHash: "h", source: "" }),
+    ).rejects.toEqual(invalid("source"));
+    expect(
+      await t.query(api.example.getOptInProof, { contactHash: "h" }),
+    ).toBeNull();
+  });
+
+  test("isEligible throws on an empty contactHash or channel instead of answering true", async () => {
+    const t = setup();
+    await expect(
+      t.query(api.example.isEligible, { contactHash: "" }),
+    ).rejects.toEqual(invalid("contactHash"));
+    await expect(
+      t.query(api.example.isEligible, { contactHash: "h", channel: "" }),
+    ).rejects.toEqual(invalid("channel"));
+  });
+
+  test("keys are exact-match: case and whitespace variants are distinct (host normalizes)", async () => {
+    const t = setup();
+    await t.mutation(api.example.suppress, {
+      contactHash: "abc",
+      reason: "unsubscribe",
+      channel: "email",
+    });
+    for (const [contactHash, channel] of [
+      ["ABC", "email"],
+      [" abc", "email"],
+      ["abc", "Email"],
+    ] as const) {
+      expect(
+        await t.query(api.example.isEligible, { contactHash, channel }),
+      ).toBe(true);
+    }
+    expect(
+      await t.query(api.example.isEligible, {
+        contactHash: "abc",
+        channel: "email",
+      }),
+    ).toBe(false);
+  });
+});

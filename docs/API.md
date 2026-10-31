@@ -117,13 +117,32 @@ makes before every send (`¬suppressed [∧ confirmed]`).
 
 ## Error codes
 
-This component does not throw coded `ConvexError`s. Every operation is total: a
-missing suppression / opt-in is a `null` or `false` return, an unsuppress of an
-unknown address is a no-op `false`, and a re-suppress / re-opt-in is an
-idempotent update rather than a conflict. Invalid `reason` values are rejected
-by the `args` validator before the handler runs; an opt-in `proof` failing the
-host `proofValidator` throws the host's own error at the client boundary, never
-a component error code.
+Operations are otherwise total: a missing suppression / opt-in is a `null` or
+`false` return, an unsuppress of an unknown address is a no-op `false`, and a
+re-suppress / re-opt-in is an idempotent update rather than a conflict. Invalid
+`reason` values are rejected by the `args` validator before the handler runs; an
+opt-in `proof` failing the host `proofValidator` throws the host's own error at
+the client boundary, never a component error code.
+
+The component throws one coded `ConvexError`, with `data` of the form
+`{ code, field }`:
+
+| Code               | Thrown by                                                    | When                                                                                                                        |
+| ------------------ | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `INVALID_ARGUMENT` | `suppress`, `recordOptIn`, `isEligible` (via the client too) | `field` is an empty string: `contactHash`/`channel` (suppress, isEligible), `contactHash`/`listKey`/`source` (recordOptIn). |
+
+`isEligible` throws rather than answering `true` for an empty key, so the send
+gate fails closed. `isSuppressed`, `getOptInProof`, and `unsuppress` are pure
+lookups and never throw this error.
+
+## Key matching
+
+`contactHash`, `channel`, and `listKey` are matched exactly (case- and
+whitespace-sensitive); the component applies no normalization, trimming, or
+plus-address folding. The host must normalize and hash contacts, and use one
+canonical spelling per channel and list (for example always `"email"`, never
+`"Email"`), because `"Email"` is a different channel from `"email"`. There is no
+expiry: a suppression lasts until `unsuppress`.
 
 ## Cron / Maintenance
 
