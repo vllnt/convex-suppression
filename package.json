@@ -100,11 +100,15 @@
   ],
   "pnpm": {
     "overrides": {
+      "deepmerge-ts@<8.0.0": "8.0.2",
       "handlebars": "4.7.10"
     },
     "minimumReleaseAge": 10080,
     "minimumReleaseAgeExclude": [
       "@vllnt/*"
+    ],
+    "ignoredBuiltDependencies": [
+      "esbuild"
     ]
   }
 }
