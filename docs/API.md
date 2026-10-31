@@ -127,13 +127,13 @@ the client boundary, never a component error code.
 The component throws one coded `ConvexError`, with `data` of the form
 `{ code, field }`:
 
-| Code               | Thrown by                                                    | When                                                                                                                        |
-| ------------------ | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `INVALID_ARGUMENT` | `suppress`, `recordOptIn`, `isEligible` (via the client too) | `field` is an empty string: `contactHash`/`channel` (suppress, isEligible), `contactHash`/`listKey`/`source` (recordOptIn). |
+| Code               | Thrown by                                      | When                                                                                                            |
+| ------------------ | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `INVALID_ARGUMENT` | `suppress`, `recordOptIn` (via the client too) | `field` is an empty string: `contactHash`/`channel` (suppress), `contactHash`/`listKey`/`source` (recordOptIn). |
 
-`isEligible` throws rather than answering `true` for an empty key, so the send
-gate fails closed. `isSuppressed`, `getOptInProof`, and `unsuppress` are pure
-lookups and never throw this error.
+`isEligible` answers `false` for an empty `contactHash` or `channel` (it never
+throws this error), so the send gate fails closed. `isSuppressed`,
+`getOptInProof`, and `unsuppress` are pure lookups and never throw this error.
 
 ## Key matching
 

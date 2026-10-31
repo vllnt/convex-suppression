@@ -458,14 +458,12 @@ describe("suppression — empty keys are rejected (fail closed)", () => {
     ).toBeNull();
   });
 
-  test("isEligible throws on an empty contactHash or channel instead of answering true", async () => {
+  test("isEligible fails closed (false, no throw) on an empty contactHash or channel", async () => {
     const t = setup();
-    await expect(
-      t.query(api.example.isEligible, { contactHash: "" }),
-    ).rejects.toEqual(invalid("contactHash"));
-    await expect(
-      t.query(api.example.isEligible, { contactHash: "h", channel: "" }),
-    ).rejects.toEqual(invalid("channel"));
+    expect(await t.query(api.example.isEligible, { contactHash: "" })).toBe(false);
+    expect(
+      await t.query(api.example.isEligible, { contactHash: "h", channel: "" }),
+    ).toBe(false);
   });
 
   test("keys are exact-match: case and whitespace variants are distinct (host normalizes)", async () => {

@@ -8,12 +8,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- `suppress`, `recordOptIn` and `isEligible` now throw
+- `suppress` and `recordOptIn` now throw
   `ConvexError({ code: "INVALID_ARGUMENT", field })` for an empty `contactHash`,
   `channel`, `listKey` or `source`. `isEligible` previously answered `true` for
-  an empty key, so the send gate now fails closed. Documented that keys are
-  matched exactly (no case, whitespace or plus-address normalization; the host
-  normalizes).
+  an empty `contactHash` or `channel`; it now answers `false`, so the send gate
+  fails closed. Documented that keys are matched exactly (no case, whitespace or
+  plus-address normalization; the host normalizes).
 - The `./test` entry now type-checks for consumers using
   `moduleResolution: nodenext` (relative imports use `.js`; Vite client types
   are referenced). The README documents the `convex-test` and `vitest`

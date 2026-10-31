@@ -1,11 +1,7 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server.js";
 import { GLOBAL_CHANNEL } from "../shared.js";
-import {
-  assertNonEmpty,
-  optInProofView,
-  suppressionView,
-} from "./validators.js";
+import { optInProofView, suppressionView } from "./validators.js";
 import type { Doc } from "./_generated/dataModel.js";
 
 /** Project a stored suppression row to its public view (drops internal fields). */
@@ -86,7 +82,7 @@ export const getOptInProof = query({
  * single call a sender makes before every send: `¬suppressed [∧ confirmed]`.
  * Suppression always blocks; the opt-in requirement is opt-in per call (marketing
  * mail sets it; a transactional send may not). An empty `contactHash` or
- * `channel` throws `INVALID_ARGUMENT` rather than answering `true`.
+ * `channel` answers `false` (fail closed).
  */
 export const isEligible = query({
   args: {
@@ -98,9 +94,11 @@ export const isEligible = query({
   returns: v.boolean(),
   handler: async (ctx, args) => {
     // Fail closed: an empty key can never match a suppression row, so answering
-    // "eligible" for it would be a silent fail-open. Throw instead.
-    assertNonEmpty("contactHash", args.contactHash);
-    assertNonEmpty("channel", args.channel);
+    // "eligible" for it would be a silent fail-open. Reactive callers may pass
+    // placeholders while ids load, so answer "not eligible" instead of throwing.
+    if (args.contactHash === "" || args.channel === "") {
+      return false;
+    }
     const globalRow = await ctx.db
       .query("suppressions")
       .withIndex("by_hash_channel", (q) =>
