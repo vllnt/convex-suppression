@@ -1,6 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { jsonValue, suppressionReason } from "./validators";
+import { jsonValue, suppressionReason } from "./validators.js";
 
 /**
  * Two sandboxed tables — the do-not-contact gate's own concern.

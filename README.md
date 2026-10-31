@@ -147,6 +147,11 @@ Full reference: [docs/API.md](docs/API.md).
 - No TTL, pruning, or cron exists. Suppressions remain until `unsuppress`;
   opt-in proofs remain and are overwritten on re-recording, with no public
   delete method.
+- Keys are matched exactly: `contactHash`, `channel`, and `listKey` are case-
+  and whitespace-sensitive, with no trimming or plus-address folding. Normalize
+  them consistently in the host (`"Email"` is not `"email"`).
+- Empty `contactHash`/`channel`/`listKey`/`source` throw `INVALID_ARGUMENT`;
+  `isEligible` throws rather than answering `true`, so the gate fails closed.
 - Hashing is host-owned and does not make data automatically anonymous. Proof
   may contain personal data; minimize it and choose a compliant retention
   policy. This package is not a legal-compliance guarantee.
@@ -182,6 +187,22 @@ pnpm test:coverage  # enforced 100% on covered files
 
 Tests run against the real component runtime via `convex-test`
 (`@edge-runtime/vm`), not mocks.
+
+### Testing your app
+
+`@vllnt/convex-suppression/test` exports `register(t, name = "suppression")` to
+mount the component in a `convex-test` instance. It needs `convex-test` and
+`vitest` (with Vite's `import.meta.glob`) in the consuming app:
+
+```ts
+/// <reference types="vite/client" />
+import { convexTest } from "convex-test";
+import { register } from "@vllnt/convex-suppression/test";
+import schema from "./schema";
+
+const t = convexTest(schema, import.meta.glob("./**/*.ts"));
+register(t);
+```
 
 ## Documentation
 
