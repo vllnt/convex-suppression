@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 /**
  * Opaque host-owned legal evidence attached to an opt-in proof — e.g. the IP,
@@ -47,3 +47,15 @@ export const optInProofView = v.object({
   proof: v.optional(jsonValue),
   confirmedAt: v.number(),
 });
+
+/**
+ * Reject an empty key. The host hashes contacts, so a real `contactHash`,
+ * `channel`, or `listKey` is never `""`; an empty one means an upstream bug
+ * (an unset value passed through) and must not become a row or a silent
+ * "not suppressed" answer. Throws `ConvexError({ code: "INVALID_ARGUMENT", field })`.
+ */
+export function assertNonEmpty(field: string, value: string): void {
+  if (value === "") {
+    throw new ConvexError({ code: "INVALID_ARGUMENT", field });
+  }
+}

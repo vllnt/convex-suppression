@@ -1,19 +1,34 @@
 # Changelog
 
 All notable changes to this project are documented here. The format is based on
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
+adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - Unreleased
+
+### Fixed
+
+- `suppress` and `recordOptIn` now throw
+  `ConvexError({ code: "INVALID_ARGUMENT", field })` for an empty `contactHash`,
+  `channel`, `listKey` or `source`. `isEligible` previously answered `true` for
+  an empty `contactHash` or `channel`; it now answers `false`, so the send gate
+  fails closed. Documented that keys are matched exactly (no case, whitespace or
+  plus-address normalization; the host normalizes).
+- The `./test` entry now type-checks for consumers using
+  `moduleResolution: nodenext` (relative imports use `.js`; Vite client types
+  are referenced). The README documents the `convex-test` and `vitest`
+  requirement.
 
 ### Changed
 
-- Treat Convex `_generated` output as CLI-owned, exclude it from formatting, and expose a
-  dedicated codegen script.
-- Refresh all direct dependencies to their latest compatible releases for canary validation.
-- Require `convex@^1.45.0` and update `convex-test` to `^0.0.56`.
+- Release automation: pinned actions, least-privilege permissions, npm trusted
+  publishing with provenance; `@latest` is published only from a `vX.Y.Z` tag on
+  `main`.
+- Dev tooling: pnpm 10 with a release-age gate, low-memory test/lint defaults,
+  `deepmerge-ts` override for a dev-only advisory.
+- The README install command now installs the stable release.
 
-## [0.1.0] - 2026-06-14
+## [0.1.0] - 2026-09-01
 
 ### Added
 
@@ -24,22 +39,30 @@ All notable changes to this project are documented here. The format is based on
   `manual`/`global`. Omitting `channel` marks a global all-channel suppression.
 - `unsuppress(contactHash, channel?)` removes an entry (a rare, audited
   re-subscribe); returns whether an entry was removed.
-- `isSuppressed(contactHash, channel?)` returns the matching suppression (a global
-  tombstone matches every channel and wins) or `null`.
-- `recordOptIn(contactHash, { listKey?, source, proof? })` records an opt-in proof;
-  `getOptInProof(contactHash, listKey?)` fetches it.
+- `isSuppressed(contactHash, channel?)` returns the matching suppression (a
+  global tombstone matches every channel and wins) or `null`.
+- `recordOptIn(contactHash, { listKey?, source, proof? })` records an opt-in
+  proof; `getOptInProof(contactHash, listKey?)` fetches it.
 - `isEligible(contactHash, { channel?, listKey?, requireOptIn? })` — the single
   send gate: `¬suppressed [∧ confirmed]`. Suppression always blocks; the opt-in
   requirement is per call.
-- Hash-keyed: the component stores only the host's opaque `contactHash`, never raw
-  PII, so a suppression survives erasure of the subject.
+- Hash-keyed: the component stores only the host's opaque `contactHash`, never
+  raw PII, so a suppression survives erasure of the subject.
 - Idempotent writes: re-suppressing or re-recording an opt-in on its key tuple
   updates in place — a replayed bounce/complaint/confirmation webhook never
   duplicates a row.
 - Typed generics: `Suppression<TProof>` with an optional `proofValidator` host
-  parser narrowing the opaque stored opt-in `proof` at the client boundary on write
-  and read — no `v.any()` dump, no unchecked cast.
+  parser narrowing the opaque stored opt-in `proof` at the client boundary on
+  write and read — no `v.any()` dump, no unchecked cast.
 - Server-sourced time: every handler stamps `createdAt`/`confirmedAt` from
   `Date.now()` inside the mutation — no caller-supplied clock.
-- Mount-safe: correct under multiple `app.use(component, { name })` mounts — each
-  instance is a sandboxed, independent do-not-contact list.
+- Mount-safe: correct under multiple `app.use(component, { name })` mounts —
+  each instance is a sandboxed, independent do-not-contact list.
+
+### Changed
+
+- Treat Convex `_generated` output as CLI-owned, exclude it from formatting, and
+  expose a dedicated codegen script.
+- Refresh all direct dependencies to their latest compatible releases for canary
+  validation.
+- Require `convex@^1.45.0` and update `convex-test` to `^0.0.56`.

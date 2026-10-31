@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
-import { jsonValue, suppressionReason } from "./validators";
+import { mutation } from "./_generated/server.js";
+import { assertNonEmpty, jsonValue, suppressionReason } from "./validators.js";
 
 /**
  * Suppress a `(contactHash, channel)` — add it to the do-not-contact list. The
@@ -14,7 +14,8 @@ import { jsonValue, suppressionReason } from "./validators";
  * its `reason` and refreshes `createdAt` rather than inserting a duplicate, so a
  * replayed bounce/complaint webhook can never fan the table out. `createdAt` is
  * stamped from the server clock (`Date.now()` inside the handler — never
- * caller-supplied).
+ * caller-supplied). An empty `contactHash` or `channel` throws
+ * `INVALID_ARGUMENT`.
  */
 export const suppress = mutation({
   args: {
@@ -24,6 +25,8 @@ export const suppress = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertNonEmpty("contactHash", args.contactHash);
+    assertNonEmpty("channel", args.channel);
     const existing = await ctx.db
       .query("suppressions")
       .withIndex("by_hash_channel", (q) =>
@@ -32,7 +35,10 @@ export const suppress = mutation({
       .unique();
     const now = Date.now();
     if (existing !== null) {
-      await ctx.db.patch("suppressions", existing._id, { reason: args.reason, createdAt: now });
+      await ctx.db.patch("suppressions", existing._id, {
+        reason: args.reason,
+        createdAt: now,
+      });
       return null;
     }
     await ctx.db.insert("suppressions", {
@@ -80,7 +86,8 @@ export const unsuppress = mutation({
  *
  * Idempotent on `(contactHash, listKey)`: a second confirmation updates `source`,
  * `proof`, and `confirmedAt` rather than inserting a duplicate. `confirmedAt` is
- * server-sourced.
+ * server-sourced. An empty `contactHash`, `listKey`, or `source` throws
+ * `INVALID_ARGUMENT`.
  */
 export const recordOptIn = mutation({
   args: {
@@ -91,6 +98,9 @@ export const recordOptIn = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    assertNonEmpty("contactHash", args.contactHash);
+    assertNonEmpty("listKey", args.listKey);
+    assertNonEmpty("source", args.source);
     const existing = await ctx.db
       .query("optInProofs")
       .withIndex("by_hash_list", (q) =>
