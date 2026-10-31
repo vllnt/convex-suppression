@@ -1,6 +1,6 @@
 {
   "name": "@vllnt/convex-suppression",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Do-not-contact suppression list + opt-in proof (GDPR/CAN-SPAM), hash-keyed and channel-aware, as a Convex component",
   "license": "MIT",
   "type": "module",
