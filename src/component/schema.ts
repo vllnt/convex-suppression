@@ -12,7 +12,7 @@ import { jsonValue, suppressionReason } from "./validators.js";
  * holds the host channel (`"email"`/`"sms"`/…) or the `GLOBAL_CHANNEL` sentinel
  * `"*"` for an all-channel suppression. `reason` is recorded for audit. Indexed
  * `by_hash_channel` (the exact-channel and global lookups an `isSuppressed` check
- * makes) and `by_hash` (every entry for a hash, for `unsuppress` and audit).
+ * makes).
  *
  * `optInProofs` is the legal evidence (not an authz relation): a `(contactHash,
  * listKey)` record of a confirmed opt-in. `listKey` scopes it to one list/purpose
@@ -27,7 +27,6 @@ export default defineSchema({
     reason: suppressionReason,
     createdAt: v.number(),
   })
-    .index("by_hash", ["contactHash"])
     .index("by_hash_channel", ["contactHash", "channel"]),
 
   optInProofs: defineTable({
