@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Removed the `by_hash` index; it was unused and a prefix of `by_hash_channel`. One less index
+  entry written per suppression and less index storage.
+
+### Fixed
+
+- `suppress` and `recordOptIn` reject keys longer than 256 characters and an opt-in `proof` whose
+  JSON form exceeds 16384 characters (`INVALID_ARGUMENT`), bounding row size against abuse.
+
 ## [0.1.1] - Unreleased
 
 ### Fixed

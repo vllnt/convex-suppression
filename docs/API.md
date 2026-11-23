@@ -129,7 +129,7 @@ The component throws one coded `ConvexError`, with `data` of the form
 
 | Code               | Thrown by                                      | When                                                                                                            |
 | ------------------ | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `INVALID_ARGUMENT` | `suppress`, `recordOptIn` (via the client too) | `field` is an empty string: `contactHash`/`channel` (suppress), `contactHash`/`listKey`/`source` (recordOptIn). |
+| `INVALID_ARGUMENT` | `suppress`, `recordOptIn` (via the client too) | `field` is an empty string or longer than 256 characters: `contactHash`/`channel` (suppress), `contactHash`/`listKey`/`source` (recordOptIn); or `field` is `proof` and its JSON form is over 16384 characters (recordOptIn). |
 
 `isEligible` answers `false` for an empty `contactHash` or `channel` (it never
 throws this error), so the send gate fails closed. `isSuppressed`,
