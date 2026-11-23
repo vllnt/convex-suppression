@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "./_generated/server.js";
-import { assertNonEmpty, assertProofSize, jsonValue, suppressionReason } from "./validators.js";
+import { assertNonEmpty, jsonValue, suppressionReason } from "./validators.js";
 
 /**
  * Suppress a `(contactHash, channel)` — add it to the do-not-contact list. The
@@ -101,7 +101,6 @@ export const recordOptIn = mutation({
     assertNonEmpty("contactHash", args.contactHash);
     assertNonEmpty("listKey", args.listKey);
     assertNonEmpty("source", args.source);
-    assertProofSize(args.proof);
     const existing = await ctx.db
       .query("optInProofs")
       .withIndex("by_hash_list", (q) =>
