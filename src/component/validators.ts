@@ -1,4 +1,7 @@
-import { ConvexError, v } from "convex/values";
+import { ConvexError, convexToJson, v, type Value } from "convex/values";
+
+const MAX_KEY_LENGTH = 256;
+const MAX_PROOF_BYTES = 16384;
 
 /**
  * Opaque host-owned legal evidence attached to an opt-in proof — e.g. the IP,
@@ -49,13 +52,22 @@ export const optInProofView = v.object({
 });
 
 /**
- * Reject an empty key. The host hashes contacts, so a real `contactHash`,
+ * Reject an empty or over-256-character key. The host hashes contacts, so a real `contactHash`,
  * `channel`, or `listKey` is never `""`; an empty one means an upstream bug
  * (an unset value passed through) and must not become a row or a silent
  * "not suppressed" answer. Throws `ConvexError({ code: "INVALID_ARGUMENT", field })`.
  */
 export function assertNonEmpty(field: string, value: string): void {
-  if (value === "") {
+  if (value === "" || value.length > MAX_KEY_LENGTH) {
     throw new ConvexError({ code: "INVALID_ARGUMENT", field });
+  }
+}
+
+export function assertProofSize(proof: Value | undefined): void {
+  if (
+    proof !== undefined &&
+    JSON.stringify(convexToJson(proof)).length > MAX_PROOF_BYTES
+  ) {
+    throw new ConvexError({ code: "INVALID_ARGUMENT", field: "proof" });
   }
 }

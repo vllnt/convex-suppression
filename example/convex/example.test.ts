@@ -490,3 +490,54 @@ describe("suppression — empty keys are rejected (fail closed)", () => {
     ).toBe(false);
   });
 });
+
+describe("suppression — oversized input is rejected", () => {
+  const invalid = (field: string) =>
+    expect.objectContaining({ data: { code: "INVALID_ARGUMENT", field } });
+
+  test("keys over 256 characters are rejected; 256 is accepted", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.example.suppress, { contactHash: "h".repeat(257), reason: "manual" }),
+    ).rejects.toEqual(invalid("contactHash"));
+    await expect(
+      t.mutation(api.example.recordOptIn, {
+        contactHash: "h",
+        listKey: "l".repeat(257),
+        source: "form",
+      }),
+    ).rejects.toEqual(invalid("listKey"));
+    await t.mutation(api.example.suppress, {
+      contactHash: "h".repeat(256),
+      channel: "c".repeat(256),
+      reason: "manual",
+    });
+    expect(
+      await t.query(api.example.isSuppressed, {
+        contactHash: "h".repeat(256),
+        channel: "c".repeat(256),
+      }),
+    ).not.toBeNull();
+  });
+
+  test("an opt-in proof over 16 KiB of JSON is rejected", async () => {
+    const t = setup();
+    await expect(
+      t.mutation(api.example.recordOptIn, {
+        contactHash: "h",
+        listKey: "news",
+        source: "form",
+        proof: { blob: "x".repeat(16384) },
+      }),
+    ).rejects.toEqual(invalid("proof"));
+    await t.mutation(api.example.recordOptIn, {
+      contactHash: "h",
+      listKey: "news",
+      source: "form",
+      proof: { blob: "x".repeat(16000) },
+    });
+    expect(
+      await t.query(api.example.getOptInProof, { contactHash: "h", listKey: "news" }),
+    ).not.toBeNull();
+  });
+});

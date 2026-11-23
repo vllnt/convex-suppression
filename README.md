@@ -150,8 +150,8 @@ Full reference: [docs/API.md](docs/API.md).
 - Keys are matched exactly: `contactHash`, `channel`, and `listKey` are case-
   and whitespace-sensitive, with no trimming or plus-address folding. Normalize
   them consistently in the host (`"Email"` is not `"email"`).
-- Writes with an empty `contactHash`/`channel`/`listKey`/`source` throw
-  `INVALID_ARGUMENT`; `isEligible` answers `false` for an empty `contactHash` or
+- Writes with an empty or over-256-character `contactHash`/`channel`/`listKey`/`source`,
+  or a `proof` whose JSON form is over 16384 characters, throw `INVALID_ARGUMENT`; `isEligible` answers `false` for an empty `contactHash` or
   `channel`, so the gate fails closed.
 - Hashing is host-owned and does not make data automatically anonymous. Proof
   may contain personal data; minimize it and choose a compliant retention
