@@ -39,8 +39,8 @@ src/
     └── validators.ts       # shared validators (suppressionReason, suppressionView, optInProofView, jsonValue)
 ```
 
-Sandboxed tables: `suppressions` — indexed `by_hash` (every entry for a hash) and `by_hash_channel`
-(the exact-channel + global lookups a check makes); `optInProofs` — indexed `by_hash_list`. No host
+Sandboxed tables: `suppressions` — indexed `by_hash_channel` (the exact-channel + global lookups a
+check makes); `optInProofs` — indexed `by_hash_list`. No host
 tables are touched. The host hashes the raw contact and keeps the raw ↔ hash mapping; the component
 only ever holds the opaque hash, so a suppression survives erasure. The stored opt-in `proof` is opaque
 to the component; the host narrows it via `proofValidator` at the client boundary.
@@ -132,6 +132,7 @@ partition (e.g. a separate marketing vs. transactional do-not-contact list).
 | Error codes | `docs/API.md` → `## Error codes` table |
 | `peerDependencies.convex` version | `llms.txt` context line (`convex@^X.Y.Z`), `docs/API.md` Compatibility line, README Installation peer note |
 | Channel / reason semantics | `docs/API.md` mutation sections, Key design decisions above |
+| Shipped files (`package.json` `files`, new `docs/*.md`) | `scripts/package-contents.test.mjs` required list, `publish.yml` `paths` |
 | Any change | `pnpm generate:llms` to validate the `llms.txt` heading and local links |
 
 Grep old values before committing (e.g. after a `peerDependencies.convex` bump, `git grep "1.41.0"` → only the new range survives).

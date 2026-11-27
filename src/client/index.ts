@@ -112,7 +112,7 @@ interface RunMutationCtx {
  * @example
  * ```ts
  * const dnc = new Suppression(components.suppression, {
- *   proofValidator: v.object({ ip: v.string() }).parse,
+ *   proofValidator: (value) => parseIpProof(value), // host parser: (unknown) => TProof
  * });
  * // a webhook suppresses on complaint:
  * await dnc.suppress(ctx, contactHash, "complaint", { channel: "email" });

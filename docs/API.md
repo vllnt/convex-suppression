@@ -2,6 +2,15 @@
 
 **Compatibility:** `convex@^1.45.0`
 
+## Exports
+
+| Entry point                                      | Exports                                                                                                                                                                                                           |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@vllnt/convex-suppression`                      | `Suppression<TProof>` class; types `SuppressionComponent`, `SuppressionOptions`, `SuppressOptions`, `RecordOptInOptions`, `IsEligibleOptions`, `SuppressionView`, `OptInProofView`, `SuppressionReason`, `Parser` |
+| `@vllnt/convex-suppression/convex.config`        | default export: the component definition for `app.use(...)` (also `./convex.config.js`)                                                                                                                           |
+| `@vllnt/convex-suppression/test`                 | `register(t, name = "suppression")` for `convex-test` (TypeScript source; needs `convex-test` and Vite's `import.meta.glob`)                                                                                      |
+| `@vllnt/convex-suppression/_generated/component` | type-only `ComponentApi` from Convex codegen (also `./_generated/component.js`)                                                                                                                                   |
+
 Construct the client with the mounted component and an optional host proof
 validator:
 

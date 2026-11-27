@@ -6,10 +6,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- The npm package now ships `docs/*.md`, `CHANGELOG.md` and `llms.txt`, so
+  coding agents can read docs that match the installed version from
+  `node_modules/@vllnt/convex-suppression/`. `llms.txt` links to bundled files
+  with `./` paths. A test fails when a required file is missing from the
+  tarball.
+
 ### Changed
 
-- Removed the `by_hash` index; it was unused and a prefix of `by_hash_channel`. One less index
-  entry written per suppression and less index storage.
+- Every push to `main` that touches the package or its shipped docs publishes a
+  `@canary` build; the `CANARY_ENABLED` gate is removed.
+
+- Removed the `by_hash` index; it was unused and a prefix of `by_hash_channel`.
+  One less index entry written per suppression and less index storage.
 
 ## [0.1.1] - Unreleased
 
