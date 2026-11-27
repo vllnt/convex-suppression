@@ -13,7 +13,7 @@ The docs are bundled in the package at `node_modules/@vllnt/convex-suppression/d
 
 ## Docs
 
-- [README](./README.md): Project overview, installation, usage examples, architecture
+- [README](./README.md): Project overview, installation, usage examples, limitations
 - [API Reference](./docs/API.md): Package exports, client methods, return shapes, error codes
 - [Changelog](./CHANGELOG.md): Version history and release notes
 - [Contributing](https://github.com/vllnt/convex-suppression/blob/main/CONTRIBUTING.md): Development setup, validation commands, release workflow

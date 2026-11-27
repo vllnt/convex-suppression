@@ -128,7 +128,7 @@ partition (e.g. a separate marketing vs. transactional do-not-contact list).
 |---------|--------------------------|
 | Public API (suppress/unsuppress/recordOptIn/isSuppressed/getOptInProof/isEligible signatures) | README API Reference table, `docs/API.md`, `llms.txt` context |
 | Config options / defaults (proofValidator, reasons, channels) | README API Reference, `docs/API.md` constructor section |
-| Schema / tables / indexes | README Architecture, `docs/API.md` |
+| Schema / tables / indexes | `docs/API.md`, `llms.txt` context, Architecture above |
 | Error codes | `docs/API.md` → `## Error codes` table |
 | `peerDependencies.convex` version | `llms.txt` context line (`convex@^X.Y.Z`), `docs/API.md` Compatibility line, README Installation peer note |
 | Channel / reason semantics | `docs/API.md` mutation sections, Key design decisions above |

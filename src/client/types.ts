@@ -10,9 +10,10 @@ export type SuppressionReason =
 
 /**
  * Validates and narrows opaque host opt-in evidence to a host type `T` at the
- * client boundary. Receives the raw value the component returned (`unknown`) and
- * MUST return a typed `T` or throw. A Zod `.parse` fits directly; `convex/values`
- * validators have no `.parse`. Omit it to keep the value unvalidated.
+ * client boundary. Receives the opaque value (`unknown`) on write before storage
+ * and on read after the component returns it, and MUST return a typed `T` or
+ * throw. A Zod `.parse` fits directly; `convex/values` validators have no
+ * `.parse`. Omit it to keep the value unvalidated.
  *
  * @typeParam T - The host's stored opt-in `proof` type.
  */

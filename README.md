@@ -48,9 +48,8 @@ channels are host-defined; reasons use the fixed union listed below.
 pnpm add @vllnt/convex-suppression convex@^1.45.0
 ```
 
-Peer dependency: `convex@^1.45.0`. This README follows `main`; the `canary`
-dist-tag carries pre-release builds (pin an exact canary version for
-reproducible installs).
+Peer dependency: `convex@^1.45.0`. The `canary` dist-tag carries pre-release
+builds (pin an exact canary version for reproducible installs).
 
 ## Quick start
 
@@ -218,7 +217,7 @@ installed version. Read them before writing code.
 heading and local links without generating a source bundle.
 
 [API reference](docs/API.md) · [LLM index](llms.txt) ·
-[Security policy](SECURITY.md)
+[Security policy](https://github.com/vllnt/convex-suppression/blob/main/SECURITY.md)
 
 ## Related packages
 
@@ -235,7 +234,8 @@ heading and local links without generating a source bundle.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See
+[CONTRIBUTING.md](https://github.com/vllnt/convex-suppression/blob/main/CONTRIBUTING.md).
 
 ## Author
 

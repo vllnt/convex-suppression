@@ -142,7 +142,8 @@ The component throws one coded `ConvexError`, with `data` of the form
 
 `isEligible` answers `false` for an empty `contactHash` or `channel` (it never
 throws this error), so the send gate fails closed. `isSuppressed`,
-`getOptInProof`, and `unsuppress` are pure lookups and never throw this error.
+`getOptInProof`, and `unsuppress` never throw this error (`unsuppress` returns
+`false` when nothing matches).
 
 ## Key matching
 

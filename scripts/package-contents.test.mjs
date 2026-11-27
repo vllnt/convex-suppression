@@ -1,7 +1,7 @@
 // @vitest-environment node
 // The npm tarball must carry the version-matched docs coding agents read from
 // node_modules, and nothing contributor-only. Uses `npm pack --dry-run`, so it
-// needs no build: `dist/` is checked by scripts/check-package-contents.sh.
+// needs no build and does not check `dist/`.
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { posix } from "node:path";
@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 const [pack] = JSON.parse(
   execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
     encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
+    stdio: ["ignore", "pipe", "inherit"],
   }),
 );
 const packed = new Set(pack.files.map((file) => file.path));

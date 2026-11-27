@@ -17,7 +17,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Every push to `main` that touches the package or its shipped docs publishes a
-  `@canary` build; the `CANARY_ENABLED` gate is removed.
+  `@canary` build; the opt-in repository-variable gate is removed.
 
 - Removed the `by_hash` index; it was unused and a prefix of `by_hash_channel`.
   One less index entry written per suppression and less index storage.
