@@ -48,9 +48,8 @@ channels are host-defined; reasons use the fixed union listed below.
 pnpm add @vllnt/convex-suppression convex@^1.45.0
 ```
 
-Peer dependency: `convex@^1.45.0`. This README follows `main`; the `canary`
-dist-tag carries pre-release builds (pin an exact canary version for
-reproducible installs).
+Peer dependency: `convex@^1.45.0`. The `canary` dist-tag carries pre-release
+builds (pin an exact canary version for reproducible installs).
 
 ## Quick start
 
@@ -205,28 +204,48 @@ const t = convexTest(schema, import.meta.glob("./**/*.ts"));
 register(t);
 ```
 
+## For coding agents
+
+The docs are bundled in the package at
+`node_modules/@vllnt/convex-suppression/docs/`, next to `README.md`,
+`CHANGELOG.md`, `llms.txt` and the TypeScript source in `src/`. They match the
+installed version. Read them before writing code.
+
 ## Documentation
 
 `llms.txt` is the maintained discovery index. `pnpm generate:llms` checks its
 heading and local links without generating a source bundle.
 
 [API reference](docs/API.md) · [LLM index](llms.txt) ·
-[Security policy](SECURITY.md)
+[Security policy](https://github.com/vllnt/convex-suppression/blob/main/SECURITY.md)
+
+## Related packages
+
+- [`@vllnt/convex-email`](https://oss.vllnt.com/packages/convex-email) — the
+  outbound email queue. Use it to send; call `isEligible` here before you
+  enqueue a message.
+- [`@vllnt/convex-consent`](https://oss.vllnt.com/packages/convex-consent) — an
+  append-only consent ledger per subject and purpose (GDPR Art. 6/7). Use it for
+  consent to processing with withdrawal and history; use this package for the
+  do-not-contact list that must survive erasure.
+- [`@vllnt/convex-memberships`](https://oss.vllnt.com/packages/convex-memberships)
+  — membership edges. Use it for who is on a subscriber list; this package only
+  records who must never be contacted.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See
+[CONTRIBUTING.md](https://github.com/vllnt/convex-suppression/blob/main/CONTRIBUTING.md).
 
 ## Author
 
 Built by [bntvllnt](https://github.com/bntvllnt) ·
 [bntvllnt.com](https://bntvllnt.com) · [X @bntvllnt](https://x.com/bntvllnt)
 
-Part of the [@vllnt](https://github.com/vllnt) Convex component fleet —
-[vllnt.com](https://vllnt.com)
-
 If this is useful, [sponsor the work](https://github.com/sponsors/bntvllnt).
 
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+Part of vllnt oss: https://oss.vllnt.com
