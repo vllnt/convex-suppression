@@ -110,7 +110,10 @@ export function codeBlocks(text) {
       return current;
     }
     if (current.open === undefined) {
-      const open = { lang: line.slice(3).trim(), line: index + 1, lines: [] };
+      // The language is the first word of the info string, lowercased, so
+      // `TS` and `ts title=x` count as `ts`.
+      const lang = (line.slice(3).trim().split(/\s+/u)[0] ?? "").toLowerCase();
+      const open = { lang, line: index + 1, lines: [] };
       return { ...current, open };
     }
     const { lang, line: at, lines } = current.open;
