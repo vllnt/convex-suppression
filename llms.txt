@@ -7,7 +7,7 @@ Install `@vllnt/convex-suppression` (unreleased builds from `main` use the
 (1.45–1.48) or 22+ (1.49 and newer). Mount it with `app.use(suppression)` from
 `@vllnt/convex-suppression/convex.config` and call it through
 `new Suppression<TProof>(components.suppression, { proofValidator? })` from host
-queries, mutations and actions. Methods: `suppress(ctx, contactHash, reason,
+functions: writes need a mutation or action, reads a query, mutation or action. Methods: `suppress(ctx, contactHash, reason,
 { channel? })`, `unsuppress(ctx, contactHash, channel?)`, `isSuppressed(ctx,
 contactHash, channel?)`, `recordOptIn(ctx, contactHash, { listKey?, source,
 proof? })`, `getOptInProof(ctx, contactHash, listKey?)`, `isEligible(ctx,
@@ -21,7 +21,8 @@ entry; omitting `channel` checks only the global entry. `isEligible` is the send
 gate: not suppressed, and, only when `requireOptIn: true` (default `false`), a
 proof for the exact `listKey` (a global opt-in is not a fallback). It returns
 `false` for an empty `contactHash` or `channel`; `isSuppressed` returns `null`
-for them. `suppress` and `recordOptIn` are idempotent on `(contactHash,
+for an empty `contactHash` and checks only the global entry for an empty
+`channel`. `suppress` and `recordOptIn` are idempotent on `(contactHash,
 channel)` and `(contactHash, listKey)`: they update in place. `recordOptIn`
 keeps only the latest proof (no history), removes the stored proof when called
 again without `proof`, and never removes a suppression. `unsuppress` removes one

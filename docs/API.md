@@ -65,7 +65,10 @@ a fallback for a named list.
 `proof` passed to `recordOptIn` (before the write, and the return value is what
 is stored) and over the `proof` returned by `getOptInProof`. It is skipped when
 `proof` is `undefined`. It must return the typed value or throw; the thrown
-error reaches your caller unchanged. Without it, `proof` is passed through
+error reaches your caller unchanged. `recordOptIn` is not an `async` function,
+so its parser error is thrown synchronously by the call, before a promise
+exists: `await` or a try/catch around the call catches it, a `.catch()` on the
+result does not. `getOptInProof` rejects its promise instead. Without it, `proof` is passed through
 unchecked. `isEligible` never runs it.
 
 ### `suppress`
@@ -107,8 +110,10 @@ Returns the entry that blocks `(contactHash, channel)`, or `null`. With a
 `channel`, it reads the global entry first and returns it if present, then the
 channel entry. Without `channel`, it reads only the global entry. Returns
 [`SuppressionView`](#suppressionview); `channel` is `null` for the global entry.
-An empty `contactHash` or `channel` returns `null`; use
-[`isEligible`](#iseligible), which fails closed, as the send gate.
+An empty `contactHash` returns `null`. An empty `channel` checks only the
+global entry: it returns that entry if one exists, otherwise `null`. Use
+[`isEligible`](#iseligible), which returns `false` for either and so fails
+closed, as the send gate.
 
 ### `recordOptIn`
 
@@ -248,13 +253,16 @@ Other failures are not component error codes:
   [`SuppressionReason`](#suppressionreason), fails Convex argument validation
   before the handler runs.
 - A `proof` rejected by `proofValidator` throws your parser's own error, in the
-  client, from `recordOptIn` (nothing is written) or `getOptInProof`.
+  client: synchronously from the `recordOptIn` call (nothing is written), or as
+  a rejected promise from `getOptInProof`.
 
 Everything else is total: a missing entry or proof is `null` or `false`,
 `unsuppress` of an unknown entry returns `false`, and a repeated `suppress` or
 `recordOptIn` updates in place. `isEligible` returns `false` for an empty
-`contactHash` or `channel`; `isSuppressed` and `getOptInProof` return `null`;
-none of them throws `INVALID_ARGUMENT`.
+`contactHash` or `channel`; `isSuppressed` returns `null` for an empty
+`contactHash` and checks only the global entry for an empty `channel`;
+`getOptInProof` returns `null` for an empty key. None of them throws
+`INVALID_ARGUMENT`.
 
 ## Key matching
 

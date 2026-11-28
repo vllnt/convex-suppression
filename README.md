@@ -330,12 +330,14 @@ read `error.data.code` and `error.data.field`.
 | -------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `INVALID_ARGUMENT`                     | `suppress`, `recordOptIn`                                   | `field` names the empty string: `contactHash` or `channel` (`suppress`); `contactHash`, `listKey` or `source` (`recordOptIn`) | Check the value before calling. Omit `channel` or `listKey` for the global entry instead of passing `""` |
 | Convex argument validation error       | any method                                                  | An argument has the wrong type, or `reason` is not one of the five `SuppressionReason` values                                 | Pass a `SuppressionReason`; TypeScript catches this at compile time                                      |
-| The error your `proofValidator` throws | `recordOptIn` (before the write), `getOptInProof` (on read) | Your parser rejected `proof`                                                                                                  | Fix the proof, or let the parser accept every shape you have stored before                               |
+| The error your `proofValidator` throws | `recordOptIn` (before the write), `getOptInProof` (on read) | Your parser rejected `proof`. From `recordOptIn` it is thrown synchronously by the call; `await` or a try/catch around the call catches it, a `.catch()` on the result does not | Fix the proof, or let the parser accept every shape you have stored before                               |
 
 These never throw `INVALID_ARGUMENT`: `isEligible` returns `false` for an empty
-`contactHash` or `channel`; `isSuppressed` returns `null` and `getOptInProof`
-returns `null` for an empty key; `unsuppress` returns `false`. A missing entry
-is `null` or `false`, never an error, and a repeated write updates in place.
+`contactHash` or `channel`. `isSuppressed` returns `null` for an empty
+`contactHash`; with an empty `channel` it checks only the global entry (it
+returns that entry if one exists, otherwise `null`). `getOptInProof` returns
+`null` for an empty key and `unsuppress` returns `false`. A missing entry is
+`null` or `false`, never an error, and a repeated write updates in place.
 
 ## Limits and gotchas
 
@@ -343,8 +345,9 @@ is `null` or `false`, never an error, and a repeated write updates in place.
   entry, not the channel entries. Always pass the channel you send on.
 - A channel check also matches the global entry, and the global entry wins:
   `isSuppressed` returns it first.
-- Only omitting `channel` makes an entry global. `reason: "global"` with a
-  `channel` still blocks only that channel; `reason` never changes the effect.
+- Omitting `channel` (or passing `"*"`) makes an entry global; `reason:
+  "global"` with another channel still blocks only that channel. `reason` never
+  changes the effect.
 - `"*"` is the stored value for "global". Passing `"*"` as a `channel` or
   `listKey` targets the global entry.
 - `isEligible` checks opt-in only when `requireOptIn: true`; the default is
@@ -363,8 +366,9 @@ is `null` or `false`, never an error, and a repeated write updates in place.
   keys the same way everywhere.
 - Changing your normalization or hash secret changes every hash, so old entries
   stop matching. Keep the old secret, or re-suppress under the new hashes.
-- An empty `contactHash` or `channel` makes `isEligible` return `false`, but
-  `isSuppressed` returns `null` (not suppressed). Use `isEligible` as the gate.
+- An empty `contactHash` or `channel` makes `isEligible` return `false`. For
+  `isSuppressed`, an empty `contactHash` returns `null` (not suppressed), and an
+  empty `channel` checks only the global entry. Use `isEligible` as the gate.
 - No expiry, TTL or cron. Entries stay until `unsuppress`; proofs stay until
   replaced. There is no method to list entries, export them or delete a proof.
 - `proof` is stored as any Convex value (no functions or class instances) and
@@ -406,7 +410,8 @@ export default defineConfig({
 });
 ```
 
-This test uses the Quick start functions:
+This test uses the Quick start functions and your app's `convex/schema.ts`; if
+you have none, `export default defineSchema({})` from `convex/server` is enough:
 
 ```ts
 // convex/email.test.ts
