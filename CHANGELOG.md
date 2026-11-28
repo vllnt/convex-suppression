@@ -33,11 +33,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `channel`, `listKey` or `source`. `isEligible` previously answered `true` for
   an empty `contactHash` or `channel`; it now answers `false`, so the send gate
   fails closed. Documented that keys are matched exactly (no case, whitespace or
-  plus-address normalization; the host normalizes).
-  **Upgrade note:** a `suppress` or `recordOptIn` call that passed an empty
-  string for one of these fields succeeded in 0.1.0 and now throws; check for
-  empty values before calling.
-  Omitting `channel` or `listKey` (global entry) is unaffected.
+  plus-address normalization; the host normalizes). **Upgrade note:** a
+  `suppress` or `recordOptIn` call that passed an empty string for one of these
+  fields succeeded in 0.1.0 and now throws; check for empty values before
+  calling. Omitting `channel` or `listKey` (global entry) is unaffected.
 - The `./test` entry now type-checks for consumers using
   `moduleResolution: nodenext` (relative imports use `.js`; Vite client types
   are referenced). The README documents the `convex-test` and `vitest`
