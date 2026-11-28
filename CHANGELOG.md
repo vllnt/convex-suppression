@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - Unreleased
 
 ### Added
 
@@ -16,13 +16,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Removed the `by_hash` index; it was unused and a prefix of `by_hash_channel`.
+  One less index entry written per suppression and less index storage. No
+  migration is needed; the next deploy drops the index.
+- Release automation: pinned actions, least-privilege permissions, npm trusted
+  publishing with provenance; `@latest` is published only from a `vX.Y.Z` tag on
+  `main`.
 - Every push to `main` that touches the package or its shipped docs publishes a
   `@canary` build; the opt-in repository-variable gate is removed.
-
-- Removed the `by_hash` index; it was unused and a prefix of `by_hash_channel`.
-  One less index entry written per suppression and less index storage.
-
-## [0.1.1] - Unreleased
+- The README install command now installs the stable release.
 
 ### Fixed
 
@@ -31,20 +33,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `channel`, `listKey` or `source`. `isEligible` previously answered `true` for
   an empty `contactHash` or `channel`; it now answers `false`, so the send gate
   fails closed. Documented that keys are matched exactly (no case, whitespace or
-  plus-address normalization; the host normalizes).
+  plus-address normalization; the host normalizes). **Upgrade note:** a
+  `suppress` or `recordOptIn` call that passed an empty string for one of these
+  fields succeeded in 0.1.0 and now throws; check for empty values before
+  calling. Omitting `channel` or `listKey` (global entry) is unaffected.
 - The `./test` entry now type-checks for consumers using
   `moduleResolution: nodenext` (relative imports use `.js`; Vite client types
   are referenced). The README documents the `convex-test` and `vitest`
   requirement.
-
-### Changed
-
-- Release automation: pinned actions, least-privilege permissions, npm trusted
-  publishing with provenance; `@latest` is published only from a `vX.Y.Z` tag on
-  `main`.
-- Dev tooling: pnpm 10 with a release-age gate, low-memory test/lint defaults,
-  `deepmerge-ts` override for a dev-only advisory.
-- The README install command now installs the stable release.
+- `register(t)` from `./test` now accepts the host app's
+  `convexTest(hostSchema)`; it was typed against the component's own schema, so
+  any host schema with its own tables failed with TS2345. Types only; no runtime
+  change.
+- The `proofValidator` example in the `Suppression` JSDoc passed
+  `v.object(...).parse`, which Convex validators do not have; it now shows a
+  host parser `(unknown) => TProof`.
 
 ## [0.1.0] - 2026-09-01
 

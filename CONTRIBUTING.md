@@ -43,6 +43,8 @@ at least one adversarial test (auth-denied, invalid input, boundary).
 - One logical change per PR
 - Include tests for new behavior or bug fixes
 - Ensure all checks pass: `pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm build`
+- Then run `pnpm test:package`: it installs the packed tarball into a temp consumer
+  project and type-checks every entry point under NodeNext and Bundler resolution
 
 ## Releases
 
@@ -53,6 +55,12 @@ publishing and provenance; nothing is published from a local machine.
   publishes one; you can also run the workflow manually on `main`. It never moves `@latest`.
 - Stable (`@latest`): merge a PR that sets `package.json` `version` and adds a matching
   `## [X.Y.Z]` entry to `CHANGELOG.md`, then push the tag `vX.Y.Z` on that `main` commit.
+- Changelog notes for the next version go under `## [X.Y.Z] - Unreleased`, with `package.json`
+  `version` already set to `X.Y.Z`. There is no `## [Unreleased]` heading; `pnpm lint` enforces
+  this through `check:release`.
+- Before pushing the tag, replace `Unreleased` with the release date in a PR, so the heading reads
+  `## [X.Y.Z] - YYYY-MM-DD`. The CHANGELOG ships in the tarball, and the publish workflow refuses
+  any other heading for the tagged version.
 
 ## Reporting Issues
 
