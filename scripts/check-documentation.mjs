@@ -238,6 +238,18 @@ function checkCode(texts) {
   const compiled = Object.entries(texts).filter(
     ([file]) => file === "README.md" || file.startsWith("docs/"),
   );
+  // Only `ts` blocks are compiled, so another TypeScript or JavaScript tag
+  // would silently skip the type-check.
+  const unchecked = /^(?:typescript|tsx|mts|cts|js|javascript|jsx|mjs|cjs)$/iu;
+  compiled.forEach(([file, text]) => {
+    codeBlocks(text).forEach((block) => {
+      assert.doesNotMatch(
+        block.lang,
+        unchecked,
+        `${file}:${String(block.line)} is tagged ${block.lang}; tag code examples ts so they are type-checked`,
+      );
+    });
+  });
   return compiled.flatMap(([file, text]) =>
     codeBlocks(text)
       .filter((block) => block.lang === "ts")

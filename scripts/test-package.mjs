@@ -10,8 +10,10 @@
 //       works through host functions under Vitest,
 //   (e) the shipped docs meet the docs contract (scripts/check-documentation.mjs),
 //       and every README and docs/ TypeScript example type-checks against the
-//       installed package in a stub Convex host; the README test example runs
-//       under the README's own vitest.config.mts.
+//       installed package in a stub Convex host; the README test examples run
+//       in a second Vitest run under the README's own vitest.config.mts.
+// Each Vitest run asserts how many test files and tests passed, so a config
+// that skips a file fails.
 // The consumer project is removed at the end, pass or fail.
 import { execFileSync } from "node:child_process";
 import {
@@ -52,6 +54,35 @@ const devSpec = (dependency) => {
 const consumer = mkdtempSync(join(tmpdir(), "suppression-consumer-"));
 const run = (command, arguments_, cwd = consumer) =>
   execFileSync(command, arguments_, { cwd, stdio: "inherit" });
+/**
+ * Runs `vitest run` with a JSON report and fails unless every test passed and
+ * exactly `files` test files (and `tests` tests, when given) ran.
+ */
+const vitest = (arguments_, expected) => {
+  const report = join(consumer, `vitest-report-${String(Date.now())}.json`);
+  run("pnpm", [
+    "exec",
+    "vitest",
+    "run",
+    ...arguments_,
+    "--reporter=default",
+    "--reporter=json",
+    `--outputFile.json=${report}`,
+  ]);
+  const result = JSON.parse(readFileSync(report, "utf8"));
+  const files = result.testResults.length;
+  if (
+    files !== expected.files ||
+    result.numFailedTests !== 0 ||
+    result.numPassedTests !== result.numTotalTests ||
+    result.numTotalTests === 0 ||
+    (expected.tests !== undefined && result.numTotalTests !== expected.tests)
+  ) {
+    throw new Error(
+      `vitest ${arguments_.join(" ") || "(package test)"}: ran ${String(files)} file(s) and ${String(result.numPassedTests)}/${String(result.numTotalTests)} test(s); expected ${String(expected.files)} file(s)${expected.tests === undefined ? "" : ` and ${String(expected.tests)} test(s)`}`,
+    );
+  }
+};
 const write = (path, text) => {
   mkdirSync(dirname(join(consumer, path)), { recursive: true });
   writeFileSync(join(consumer, path), `${text.trim()}\n`);
@@ -250,8 +281,24 @@ const fromJs: SuppressionComponent = componentJs;
 void [client, fromJs, config, configJs, register];
 `,
   );
+  // This package test's own config, scoped to its own host under convex/.
+  write(
+    "vitest.config.mts",
+    `
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    environment: "edge-runtime",
+    include: ["convex/**/*.test.ts"],
+    server: { deps: { inline: ["convex-test"] } },
+  },
+});
+`,
+  );
+
   // (e) Docs contract on the installed package, then its examples in a stub
-  // host under readme/. The README's vitest.config.mts is the consumer's config.
+  // host under readme/, with the README's vitest.config.mts as readme/'s config.
   const installed = join(consumer, "node_modules", name);
   const examples = checkDocumentation(installed, consumer);
   const vitestConfig = examples.find(
@@ -260,7 +307,15 @@ void [client, fromJs, config, configJs, register];
   if (!vitestConfig) {
     throw new Error("README Testing must show a // vitest.config.mts block");
   }
-  write("vitest.config.mts", vitestConfig.code);
+  write("readme/vitest.config.mts", vitestConfig.code);
+  const readmeTests = examples.filter(({ path }) =>
+    /\.test\.m?ts$/u.test(path),
+  );
+  if (readmeTests.length === 0) {
+    throw new Error(
+      "README Testing must show a // convex/<name>.test.ts block",
+    );
+  }
   const hostExamples = examples.filter((example) => example !== vitestConfig);
   const readmeFiles = writeHost(
     join(consumer, "readme"),
@@ -315,7 +370,14 @@ void [client, fromJs, config, configJs, register];
 
   // (d) register + a suppress/isEligible round trip under Vitest, and (e) the
   // README test example.
-  run("pnpm", ["exec", "vitest", "run"]);
+  vitest([], { files: 1, tests: 1 });
+  const readmeRoot = join(consumer, "readme");
+  vitest(
+    ["--root", readmeRoot, "--config", join(readmeRoot, "vitest.config.mts")],
+    {
+      files: readmeTests.length,
+    },
+  );
   console.log(
     "OK    package test: tarball, imports, types, register and docs contract",
   );
