@@ -11,6 +11,7 @@
 // The consumer project is removed at the end, pass or fail.
 import { execFileSync } from "node:child_process";
 import {
+  copyFileSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -84,14 +85,17 @@ try {
     JSON.stringify({
       private: true,
       type: "module",
-      // Same supply-chain policy as this repo: release-age gate and overrides.
+      // Same overrides as this repo; pnpm reads them from package.json.
       pnpm: {
         ignoredBuiltDependencies: ["esbuild"],
-        minimumReleaseAge: pnpm.minimumReleaseAge,
-        minimumReleaseAgeExclude: pnpm.minimumReleaseAgeExclude,
         overrides: pnpm.overrides,
       },
     }),
+  );
+  // Same release-age gate as this repo; pnpm 10 reads it only from this file.
+  copyFileSync(
+    join(root, "pnpm-workspace.yaml"),
+    join(consumer, "pnpm-workspace.yaml"),
   );
   run("pnpm", [
     "add",
