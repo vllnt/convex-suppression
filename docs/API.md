@@ -66,10 +66,11 @@ a fallback for a named list.
 is stored) and over the `proof` returned by `getOptInProof`. It is skipped when
 `proof` is `undefined`. It must return the typed value or throw; the thrown
 error reaches your caller unchanged. `recordOptIn` is not an `async` function,
-so its parser error is thrown synchronously by the call, before a promise
-exists: `await` or a try/catch around the call catches it, a `.catch()` on the
-result does not. `getOptInProof` rejects its promise instead. Without it, `proof` is passed through
-unchecked. `isEligible` never runs it.
+so its parser error is a synchronous throw, not a rejected promise: a try/catch
+around the call catches it (with or without `await`), and a `.catch()` on the
+returned promise never runs. `getOptInProof` rejects its promise instead.
+Without `proofValidator`, `proof` is passed through unchecked. `isEligible`
+never runs it.
 
 ### `suppress`
 
@@ -110,8 +111,8 @@ Returns the entry that blocks `(contactHash, channel)`, or `null`. With a
 `channel`, it reads the global entry first and returns it if present, then the
 channel entry. Without `channel`, it reads only the global entry. Returns
 [`SuppressionView`](#suppressionview); `channel` is `null` for the global entry.
-An empty `contactHash` returns `null`. An empty `channel` checks only the
-global entry: it returns that entry if one exists, otherwise `null`. Use
+An empty `contactHash` returns `null`. An empty `channel` checks only the global
+entry: it returns that entry if one exists, otherwise `null`. Use
 [`isEligible`](#iseligible), which returns `false` for either and so fails
 closed, as the send gate.
 

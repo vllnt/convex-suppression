@@ -62,8 +62,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   "global"` does not make an entry global, recording an opt-in again without
   `proof` removes the stored proof, the `proofValidator` return value is what
   is stored, an empty `channel` in `isSuppressed` checks only the global
-  entry, and a `proofValidator` error from `recordOptIn` is thrown
-  synchronously.
+  entry, and a `proofValidator` error from `recordOptIn` is a
+  synchronous throw, not a rejected promise.
 - `llms.txt` now has the package summary, When to use, a link to the errors
   table and the shared Ecosystem block.
 - New `package.json` description and keywords, shared by the README and
