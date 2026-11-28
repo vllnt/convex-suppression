@@ -204,9 +204,9 @@ describe("suppression — isEligible (the send gate)", () => {
       channel: "email",
     });
     // checking the global gate (no channel) does not see the email-only suppression
-    expect(
-      await t.query(api.example.isEligible, { contactHash: "ch" }),
-    ).toBe(true);
+    expect(await t.query(api.example.isEligible, { contactHash: "ch" })).toBe(
+      true,
+    );
   });
 });
 
@@ -288,9 +288,9 @@ describe("suppression — idempotency & adversarial", () => {
       channel: "email",
     });
     // unsuppress with no channel arg → clears the global row, leaves the email row
-    expect(await t.mutation(api.example.unsuppress, { contactHash: "ug" })).toBe(
-      true,
-    );
+    expect(
+      await t.mutation(api.example.unsuppress, { contactHash: "ug" }),
+    ).toBe(true);
     // the global tombstone is gone, but the email-channel suppression remains
     const stillEmail = await t.query(api.example.isSuppressed, {
       contactHash: "ug",
@@ -361,16 +361,20 @@ describe("suppression — mount-safety (independent named mount)", () => {
       reason: "global",
     });
     expect(
-      (await t.query(api.example.isSuppressedMarketing, {
-        contactHash: "shared",
-      }))?.reason,
+      (
+        await t.query(api.example.isSuppressedMarketing, {
+          contactHash: "shared",
+        })
+      )?.reason,
     ).toBe("global");
     // default mount still only has the email-channel manual entry
     expect(
-      (await t.query(api.example.isSuppressed, {
-        contactHash: "shared",
-        channel: "email",
-      }))?.reason,
+      (
+        await t.query(api.example.isSuppressed, {
+          contactHash: "shared",
+          channel: "email",
+        })
+      )?.reason,
     ).toBe("manual");
   });
 });
@@ -416,7 +420,6 @@ describe("suppression — host/component table isolation", () => {
   });
 });
 
-
 describe("suppression — empty keys are rejected (fail closed)", () => {
   const invalid = (field: string) =>
     expect.objectContaining({ data: { code: "INVALID_ARGUMENT", field } });
@@ -460,9 +463,42 @@ describe("suppression — empty keys are rejected (fail closed)", () => {
 
   test("isEligible fails closed (false, no throw) on an empty contactHash or channel", async () => {
     const t = setup();
-    expect(await t.query(api.example.isEligible, { contactHash: "" })).toBe(false);
+    expect(await t.query(api.example.isEligible, { contactHash: "" })).toBe(
+      false,
+    );
     expect(
       await t.query(api.example.isEligible, { contactHash: "h", channel: "" }),
+    ).toBe(false);
+  });
+
+  test("isSuppressed with an empty contactHash or channel: empty hash is null, empty channel checks only the global entry", async () => {
+    const t = setup();
+    expect(
+      await t.query(api.example.isSuppressed, {
+        contactHash: "",
+        channel: "email",
+      }),
+    ).toBeNull();
+    // No global entry: an empty channel matches nothing.
+    expect(
+      await t.query(api.example.isSuppressed, {
+        contactHash: "g",
+        channel: "",
+      }),
+    ).toBeNull();
+    await t.mutation(api.example.suppress, {
+      contactHash: "g",
+      reason: "manual",
+    });
+    // With a global entry: an empty channel still returns it (global is read first).
+    const entry = await t.query(api.example.isSuppressed, {
+      contactHash: "g",
+      channel: "",
+    });
+    expect(entry?.channel).toBeNull();
+    expect(entry?.reason).toBe("manual");
+    expect(
+      await t.query(api.example.isEligible, { contactHash: "g", channel: "" }),
     ).toBe(false);
   });
 
