@@ -23,7 +23,7 @@ import { dirname, join } from "node:path";
 import process from "node:process";
 
 const root = process.cwd();
-const { name } = JSON.parse(readFileSync("package.json", "utf8"));
+const { name, pnpm } = JSON.parse(readFileSync("package.json", "utf8"));
 
 /** Installed dev version of a package, as an install spec for the consumer. */
 const devSpec = (dependency) => {
@@ -84,7 +84,13 @@ try {
     JSON.stringify({
       private: true,
       type: "module",
-      pnpm: { ignoredBuiltDependencies: ["esbuild"] },
+      // Same supply-chain policy as this repo: release-age gate and overrides.
+      pnpm: {
+        ignoredBuiltDependencies: ["esbuild"],
+        minimumReleaseAge: pnpm.minimumReleaseAge,
+        minimumReleaseAgeExclude: pnpm.minimumReleaseAgeExclude,
+        overrides: pnpm.overrides,
+      },
     }),
   );
   run("pnpm", [
