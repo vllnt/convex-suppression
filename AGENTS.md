@@ -8,6 +8,15 @@ override what you may have learned about Convex from training data.
 Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
 <!-- convex-ai-end -->
 
+<!-- Kept outside the convex-ai block: `convex ai-files install` rewrites everything between the markers. -->
+`guidelines.md` is generated and git-ignored, so a fresh clone lacks it: run
+`pnpm exec convex ai-files install` (no login or deployment needed; it also rewrites the block above,
+installs Convex agent skills into `.claude/skills/` and `.agents/skills/`, and creates `CLAUDE.md`;
+afterwards delete `CLAUDE.md` and the `.claude/` folder (`pnpm lint` fails while either exists) and run
+`git restore AGENTS.md` to drop the re-wrapped block). If the download fails, continue with this file
+and the [Convex docs](https://docs.convex.dev), and never commit anything under
+`example/convex/_generated/ai/`.
+
 # @vllnt/convex-suppression
 
 The do-not-contact suppression list + opt-in proof (GDPR opt-out / CAN-SPAM), as a Convex component.
