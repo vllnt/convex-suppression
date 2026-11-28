@@ -1,35 +1,87 @@
 # @vllnt/convex-suppression
 
-> Do-not-contact suppression list + opt-in proof (GDPR/CAN-SPAM), hash-keyed and channel-aware, as a Convex component
+> TypeScript Convex component for a do-not-contact suppression list (GDPR, CAN-SPAM): unsubscribes, bounces and complaints by contact hash, plus opt-in proof.
 
-`@vllnt/convex-suppression` is a publishable Convex component. It targets `convex@^1.45.0`.
-It stores two sandboxed tables: `suppressions` (a `(contactHash, channel)` anti-membership tombstone with a `reason` of `unsubscribe`/`bounce`/`complaint`/`manual`/`global` and a `createdAt` server timestamp) and `optInProofs` (a `(contactHash, listKey)` record of a confirmed opt-in with a `source`, opaque host `proof`, and a `confirmedAt` server timestamp). The component is keyed by a host-supplied `contactHash` (`hash(normalize(email|phone))`) rather than a raw contact (opaque proof can still contain personal data), so a "do not contact" tombstone survives erasure of the subject — the GDPR crux. A sender calls `isEligible(contactHash, { channel?, listKey?, requireOptIn? })` before every send (`¬suppressed [∧ confirmed]`); an unsubscribe/bounce/complaint calls `suppress(contactHash, reason, { channel? })`; a confirmed double opt-in calls `recordOptIn(contactHash, { listKey?, source, proof? })`; rare re-subscribes call `unsuppress`. A suppression with no channel is a global all-channel tombstone (stored under a `"*"` sentinel) that matches every channel; a channel entry matches only itself. Writes are idempotent on their key tuple (a replayed webhook updates in place, never duplicates). Suppression is explicitly the residue that is NOT a membership — a subscriber list is a flat membership edge or host data, modeled elsewhere. Time is read from the server clock inside every handler — no caller-supplied clock. The host owns the raw contact, the hashing + salt policy, auth, and the opt-in `proof` type (the client is generic over it, with an optional `proofValidator` parser narrowing the opaque stored value at the boundary — never a `v.any()` dump); the component owns only the hash-keyed do-not-contact gate. Mount-safe: it runs correctly under multiple named `app.use` mounts (e.g. a separate marketing vs. transactional list).
+Install `@vllnt/convex-suppression` (unreleased builds from `main` use the
+`canary` dist-tag). Peer dependency `convex@^1.45.0`; convex needs Node.js 20+
+(1.45–1.48) or 22+ (1.49 and newer). Mount it with `app.use(suppression)` from
+`@vllnt/convex-suppression/convex.config` and call it through
+`new Suppression<TProof>(components.suppression, { proofValidator? })` from host
+functions: writes need a mutation or action, reads a query, mutation or action. Methods: `suppress(ctx, contactHash, reason,
+{ channel? })`, `unsuppress(ctx, contactHash, channel?)`, `isSuppressed(ctx,
+contactHash, channel?)`, `recordOptIn(ctx, contactHash, { listKey?, source,
+proof? })`, `getOptInProof(ctx, contactHash, listKey?)`, `isEligible(ctx,
+contactHash, { channel?, listKey?, requireOptIn? })`. `reason` is
+`unsubscribe`, `bounce`, `complaint`, `manual` or `global` (audit only; it never
+changes the effect). The host normalizes and hashes the contact and passes an
+opaque `contactHash`; the component never sees a raw email or phone, so an entry
+survives erasure of the person's data. Omitting `channel` or `listKey` targets
+the global entry, stored as `"*"`. A channel check also matches the global
+entry; omitting `channel` checks only the global entry. `isEligible` is the send
+gate: not suppressed, and, only when `requireOptIn: true` (default `false`), a
+proof for the exact `listKey` (a global opt-in is not a fallback). It returns
+`false` for an empty `contactHash` or `channel`; `isSuppressed` returns `null`
+for an empty `contactHash` and checks only the global entry for an empty
+`channel`. `suppress` and `recordOptIn` are idempotent on `(contactHash,
+channel)` and `(contactHash, listKey)`: they update in place. `recordOptIn`
+keeps only the latest proof (no history), removes the stored proof when called
+again without `proof`, and never removes a suppression. `unsuppress` removes one
+exact entry. Keys match exactly (no trimming or case folding). The only error
+code is `ConvexError` `data.code` `INVALID_ARGUMENT` (with `data.field`), thrown
+by `suppress` and `recordOptIn` for an empty `contactHash`, `channel`, `listKey`
+or `source`. `proofValidator` is a host parser `(unknown) => TProof` (not
+`v.*.parse`), run on write and on read. There is no TTL, cron, listing, export
+or proof deletion, no auth (the host authorizes every call) and no React entry.
+Mount it more than once (`app.use(suppression, { name })`) for separate lists.
+Not a legal-compliance guarantee.
 
-Omitting channel checks only global suppression; named-channel checks include it. Opt-in proof uses exact list keys without global fallback and does not clear suppression. No TTL/cron exists: suppression persists until unsuppress, proof persists and is replaced by recordOptIn with no public deletion method. Hashes are not necessarily anonymous; legal compliance is host-owned. Host parsers are `(unknown) => T`, not `v.*.parse`.
+## When to use
+
+- Use it when every email, SMS or push send must first check that the contact
+  did not unsubscribe, bounce or complain.
+- Use it when the do-not-contact entry must outlive erasure of the person's
+  data: the component stores only a hash you compute.
+- Use it when a marketing send must also find a recorded opt-in proof for the
+  list.
+- Do not use it when you need consent to processing per purpose, with
+  withdrawal and full history: use `@vllnt/convex-consent`.
+- Do not use it when you need to know who is on a subscriber list: use
+  `@vllnt/convex-memberships`.
+- Do not use it when you need to queue and send the email: use
+  `@vllnt/convex-email`, and call `isEligible` here first.
 
 ## For coding agents
 
-The docs are bundled in the package at `node_modules/@vllnt/convex-suppression/docs/` (with `README.md`, `CHANGELOG.md`, this `llms.txt` and the TypeScript source in `src/`). They match the installed version. Read them before writing code. Links below that start with `./` point to those bundled files; GitHub links follow `main`.
+The docs are bundled in the package at
+`node_modules/@vllnt/convex-suppression/` and match the installed version. Read
+them, and the shipped `src/`, before writing code. The links below to `./` paths
+are files inside the installed package.
 
 ## Docs
 
-- [README](./README.md): Project overview, installation, usage examples, limitations
-- [API Reference](./docs/API.md): Package exports, client methods, return shapes, error codes
+- [README](./README.md): Install, quick start, common tasks, limits
+- [API Reference](./docs/API.md): Every export, signature, default, return shape and table
+- [Errors and fixes](./README.md#errors-and-fixes): Every error code or message, its cause and the fix
 - [Changelog](./CHANGELOG.md): Version history and release notes
-- [Contributing](https://github.com/vllnt/convex-suppression/blob/main/CONTRIBUTING.md): Development setup, validation commands, release workflow
+- [Contributing](https://github.com/vllnt/convex-suppression/blob/main/CONTRIBUTING.md): Development setup, validation commands, release workflow (repository only)
 
 ## Examples
 
 - [Example component wrapper](https://github.com/vllnt/convex-suppression/blob/main/example/convex/example.ts): Host-app wrapper functions
-- [Example tests](https://github.com/vllnt/convex-suppression/blob/main/example/convex/example.test.ts): End-to-end usage coverage with `convex-test`
-
-## Ecosystem
-
-- [vllnt oss](https://oss.vllnt.com/llms.txt): Index of every @vllnt package
+- [Example tests](https://github.com/vllnt/convex-suppression/blob/main/example/convex/example.test.ts): Simulated usage coverage with `convex-test`
 
 ## Optional
 
-- [AGENTS](https://github.com/vllnt/convex-suppression/blob/main/AGENTS.md): Agent instructions for contributors to this repository
+- [AGENTS](https://github.com/vllnt/convex-suppression/blob/main/AGENTS.md): Contributor instructions for working in this repository (repository only)
 - [Security Policy](https://github.com/vllnt/convex-suppression/blob/main/SECURITY.md): Vulnerability reporting policy
 - [Code of Conduct](https://github.com/vllnt/convex-suppression/blob/main/CODE_OF_CONDUCT.md): Community participation guidelines
 - [License](./LICENSE): MIT license
+
+## Ecosystem
+
+- [Package page](https://oss.vllnt.com/packages/convex-suppression)
+- [Release feed](https://oss.vllnt.com/packages/convex-suppression/rss.xml)
+- [All @vllnt packages](https://oss.vllnt.com/llms.txt)
+- [Search vllnt packages and docs](https://index.vllnt.com)
+- [vllnt](https://vllnt.com/llms.txt)
+- [Author](https://bntvllnt.com)

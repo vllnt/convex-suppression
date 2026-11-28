@@ -104,27 +104,36 @@ interface RunMutationCtx {
  * bounce / complaint webhook calls `suppress`; a double-opt-in confirmation calls
  * `recordOptIn`. The host owns meaning and auth — it resolves identity, hashes the
  * contact, and decides the channel/list semantics. Pass `proofValidator` to narrow
- * the opaque opt-in evidence to `TProof` at the boundary — there is no unchecked
- * cast.
+ * the opaque opt-in evidence to `TProof` at the boundary; without it, `proof` is
+ * typed `TProof` but not checked.
  *
  * @typeParam TProof - The host's opt-in proof evidence type (defaults to `unknown`).
  *
  * @example
  * ```ts
- * const dnc = new Suppression(components.suppression, {
- *   proofValidator: (value) => parseIpProof(value), // host parser: (unknown) => TProof
+ * const dnc = new Suppression<{ ip: string }>(components.suppression, {
+ *   proofValidator: (value) => parseIpProof(value), // your parser: (unknown) => { ip: string }
  * });
- * // a webhook suppresses on complaint:
+ * // a verified complaint webhook suppresses the email channel:
  * await dnc.suppress(ctx, contactHash, "complaint", { channel: "email" });
- * // a sender gates a marketing send:
- * if (await dnc.isEligible(ctx, contactHash, { channel: "email", listKey: "news", requireOptIn: true })) {
- *   // ...send
- * }
+ * // a marketing send checks the gate first:
+ * const mayEmail = await dnc.isEligible(ctx, contactHash, {
+ *   channel: "email",
+ *   listKey: "news",
+ *   requireOptIn: true,
+ * });
  * ```
+ *
+ * @see https://oss.vllnt.com/packages/convex-suppression
  */
 export class Suppression<TProof = unknown> {
   private readonly proofValidator: Parser<TProof> | undefined;
 
+  /**
+   * @param component - The mounted component, `components.suppression` (or the
+   *   name given to `app.use`).
+   * @param options - Optional `proofValidator`; defaults to `{}`.
+   */
   constructor(
     private readonly component: SuppressionComponent,
     options: SuppressionOptions<TProof> = {},

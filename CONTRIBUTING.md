@@ -44,7 +44,9 @@ at least one adversarial test (auth-denied, invalid input, boundary).
 - Include tests for new behavior or bug fixes
 - Ensure all checks pass: `pnpm typecheck && pnpm lint && pnpm test:coverage && pnpm build`
 - Then run `pnpm test:package`: it installs the packed tarball into a temp consumer
-  project and type-checks every entry point under NodeNext and Bundler resolution
+  project, type-checks every entry point under NodeNext and Bundler resolution, and runs
+  the docs contract (`scripts/check-documentation.mjs`), which also type-checks the README
+  and `docs/API.md` examples against the installed package
 
 ## Releases
 

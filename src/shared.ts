@@ -1,5 +1,6 @@
 /** Shared constants used by both `client/` and `component/`. */
 
+/** The same value as the name passed to `defineComponent`, and the default mount name. */
 export const COMPONENT_NAME = "suppression";
 
 /**

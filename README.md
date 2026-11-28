@@ -1,67 +1,42 @@
-<!-- Badges -->
-
-[![convex-component](https://img.shields.io/badge/convex-component-EE342F.svg)](https://www.convex.dev/components)
-[![npm](https://img.shields.io/npm/v/@vllnt/convex-suppression.svg)](https://www.npmjs.com/package/@vllnt/convex-suppression)
-[![CI](https://github.com/vllnt/convex-suppression/actions/workflows/ci.yml/badge.svg)](https://github.com/vllnt/convex-suppression/actions/workflows/ci.yml)
-[![license](https://img.shields.io/npm/l/@vllnt/convex-suppression.svg)](./LICENSE)
-
 # @vllnt/convex-suppression
 
-The do-not-contact suppression list + opt-in proof, as a Convex component.
+TypeScript Convex component for a do-not-contact suppression list (GDPR, CAN-SPAM): unsubscribes, bounces and complaints by contact hash, plus opt-in proof.
 
-```ts
-const dnc = new Suppression(components.suppression);
-await dnc.suppress(ctx, contactHash, "complaint", { channel: "email" });
-const canSend = await dnc.isEligible(ctx, contactHash, { channel: "email" });
-```
+## For coding agents
 
-The GDPR opt-out / CAN-SPAM primitive: a global do-not-contact list keyed by an
-opaque **`contactHash`** (never raw PII, so it survives erasure) plus an opt-in
-proof store (latest proof per contact/list, not append-only history). Before
-every send the host asks `isEligible`; an unsubscribe / bounce / complaint calls
-`suppress`; a double-opt-in confirmation calls `recordOptIn`. Domain-neutral —
-channels are host-defined; reasons use the fixed union listed below.
+Docs for the installed version are in `node_modules/@vllnt/convex-suppression/`:
+`docs/API.md`, `llms.txt`, `CHANGELOG.md` and the TypeScript `src/`. Read them
+before writing code against this package.
 
-## Features
+## When to use
 
-- **Hash-keyed, erasure-surviving** — stores only the opaque `contactHash`,
-  never raw PII, so a tombstone outlives erasure of the subject.
-- **Channel-aware** — scope a suppression to one channel
-  (`"email"`/`"sms"`/`"push"`), or omit `channel` for a global all-channel
-  tombstone.
-- **One send gate** — `isEligible` answers `¬suppressed [∧ confirmed]` in one
-  call; suppression always blocks, opt-in is per call.
-- **Opt-in proof ledger** — `recordOptIn` / `getOptInProof` store legal
-  proof-of-consent per list, kept separate from any authz store.
-- **Idempotent** — re-suppressing / re-recording on its key tuple updates in
-  place, so a replayed webhook never duplicates a row.
-- **Typed, opaque proof** — `Suppression<TProof>` with an optional
-  `proofValidator` narrows the stored evidence at the boundary.
-- **Server-sourced time** — `createdAt`/`confirmedAt` are stamped from the
-  server clock; a caller can never supply a timestamp.
-- **Mount-safe** — correct under multiple named `app.use` mounts (e.g. marketing
-  vs. transactional lists), each an isolated sandbox.
+- Use it when every email, SMS or push send must first check that the contact
+  did not unsubscribe, bounce or complain.
+- Use it when the do-not-contact entry must outlive erasure of the person's
+  data: the component stores only a hash you compute.
+- Use it when a marketing send must also find a recorded opt-in proof for the
+  list.
+- Do not use it when you need consent to processing per purpose, with withdrawal
+  and full history: use
+  [`@vllnt/convex-consent`](https://oss.vllnt.com/packages/convex-consent).
+- Do not use it when you need to know who is on a subscriber list: use
+  [`@vllnt/convex-memberships`](https://oss.vllnt.com/packages/convex-memberships).
+- Do not use it when you need to queue and send the email: use
+  [`@vllnt/convex-email`](https://oss.vllnt.com/packages/convex-email), and call
+  `isEligible` here first.
 
-## Installation
+## Install
 
 ```bash
-pnpm add @vllnt/convex-suppression convex@^1.45.0
+pnpm add @vllnt/convex-suppression
 ```
-
-Peer dependency: `convex@^1.45.0`. The `canary` dist-tag carries pre-release
-builds (pin an exact canary version for reproducible installs).
 
 ## Quick start
 
-After mounting, run `pnpm exec convex dev` to generate `components.suppression`.
-These internal functions accept a contact hash from trusted server code. The
-host must normalize and hash contacts consistently, authenticate webhooks, and
-verify opt-in before calling them.
-
 ```ts
 // convex/convex.config.ts
-import { defineApp } from "convex/server";
 import suppression from "@vllnt/convex-suppression/convex.config";
+import { defineApp } from "convex/server";
 
 const app = defineApp();
 app.use(suppression);
@@ -69,29 +44,19 @@ export default app;
 ```
 
 ```ts
-// convex/email.ts — host owns auth + hashing; pass an opaque contactHash in.
+// convex/email.ts
+import { Suppression } from "@vllnt/convex-suppression";
+import { v } from "convex/values";
+
 import { components } from "./_generated/api";
 import { internalMutation, internalQuery } from "./_generated/server";
-import { v } from "convex/values";
-import { Suppression } from "@vllnt/convex-suppression";
 
-const dnc = new Suppression<{ ip: string }>(components.suppression, {
-  proofValidator: (value) => {
-    if (
-      typeof value !== "object" ||
-      value === null ||
-      !("ip" in value) ||
-      typeof value.ip !== "string"
-    ) {
-      throw new Error("Expected an ip string");
-    }
-    return { ip: value.ip };
-  },
-});
+const dnc = new Suppression(components.suppression);
 
-// The send gate — call before every send.
+// The send gate: call it before every newsletter email.
 export const canEmail = internalQuery({
   args: { contactHash: v.string() },
+  returns: v.boolean(),
   handler: (ctx, { contactHash }) =>
     dnc.isEligible(ctx, contactHash, {
       channel: "email",
@@ -100,14 +65,161 @@ export const canEmail = internalQuery({
     }),
 });
 
-// A provider webhook suppresses on complaint; a confirmed double opt-in records proof.
+// Your provider's complaint webhook, after you verify it.
 export const onComplaint = internalMutation({
   args: { contactHash: v.string() },
+  returns: v.null(),
   handler: (ctx, { contactHash }) =>
     dnc.suppress(ctx, contactHash, "complaint", { channel: "email" }),
 });
+
+// Your double opt-in confirmation link, after you check its token.
 export const confirmOptIn = internalMutation({
+  args: { contactHash: v.string() },
+  returns: v.null(),
+  handler: (ctx, { contactHash }) =>
+    dnc.recordOptIn(ctx, contactHash, {
+      listKey: "newsletter",
+      source: "double-opt-in",
+    }),
+});
+```
+
+Run `npx convex dev` once to generate `components.suppression`. The component
+never reads auth and never sees a raw email or phone number: your code
+normalizes and hashes the contact (see [Common tasks](#common-tasks)), checks
+who may call, and passes the opaque `contactHash`.
+
+## API
+
+Full reference: [docs/API.md](docs/API.md).
+
+| Export                                                                   | Import from                                      | What it does                                                                        |
+| ------------------------------------------------------------------------ | ------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| [`Suppression`](docs/API.md#suppression)                                 | `@vllnt/convex-suppression`                      | Host client: `new Suppression<TProof>(components.suppression, { proofValidator? })` |
+| [`suppress(ctx, contactHash, reason, opts?)`](docs/API.md#suppress)      | `Suppression` method, mutation                   | Add `(contactHash, channel)` to the list; returns `null`                            |
+| [`unsuppress(ctx, contactHash, channel?)`](docs/API.md#unsuppress)       | `Suppression` method, mutation                   | Remove that exact entry; returns `true` if one was removed                          |
+| [`isSuppressed(ctx, contactHash, channel?)`](docs/API.md#issuppressed)   | `Suppression` method, query                      | The matching entry (global first) or `null`                                         |
+| [`recordOptIn(ctx, contactHash, opts)`](docs/API.md#recordoptin)         | `Suppression` method, mutation                   | Store the latest opt-in proof for `(contactHash, listKey)`; returns `null`          |
+| [`getOptInProof(ctx, contactHash, listKey?)`](docs/API.md#getoptinproof) | `Suppression` method, query                      | The stored opt-in proof or `null`                                                   |
+| [`isEligible(ctx, contactHash, opts?)`](docs/API.md#iseligible)          | `Suppression` method, query                      | Send gate: not suppressed, and opted in when `requireOptIn`; returns `boolean`      |
+| [`SuppressionComponent`](docs/API.md#suppressioncomponent)               | `@vllnt/convex-suppression` (type)               | Type of `components.suppression` the client accepts                                 |
+| [`SuppressionOptions`](docs/API.md#suppressionoptions)                   | `@vllnt/convex-suppression` (type)               | `{ proofValidator? }`                                                               |
+| [`SuppressOptions`](docs/API.md#suppressoptions)                         | `@vllnt/convex-suppression` (type)               | `{ channel? }`                                                                      |
+| [`RecordOptInOptions`](docs/API.md#recordoptinoptions)                   | `@vllnt/convex-suppression` (type)               | `{ listKey?, source, proof? }`                                                      |
+| [`IsEligibleOptions`](docs/API.md#iseligibleoptions)                     | `@vllnt/convex-suppression` (type)               | `{ channel?, listKey?, requireOptIn? }`                                             |
+| [`SuppressionView`](docs/API.md#suppressionview)                         | `@vllnt/convex-suppression` (type)               | Result of `isSuppressed`                                                            |
+| [`OptInProofView`](docs/API.md#optinproofview)                           | `@vllnt/convex-suppression` (type)               | Result of `getOptInProof`                                                           |
+| [`SuppressionReason`](docs/API.md#suppressionreason)                     | `@vllnt/convex-suppression` (type)               | `"unsubscribe" \| "bounce" \| "complaint" \| "manual" \| "global"`                  |
+| [`Parser`](docs/API.md#parser)                                           | `@vllnt/convex-suppression` (type)               | `(value: unknown) => T`, the `proofValidator` shape                                 |
+| [`default` (component config)](docs/API.md#convexconfig)                 | `@vllnt/convex-suppression/convex.config`        | Pass to `app.use(...)`                                                              |
+| [`register`](docs/API.md#register)                                       | `@vllnt/convex-suppression/test`                 | Mount the component in `convex-test`                                                |
+| [`ComponentApi`](docs/API.md#componentapi)                               | `@vllnt/convex-suppression/_generated/component` | Generated type of the mounted component                                             |
+
+`GLOBAL_CHANNEL` (`"*"`) and the other constants in `src/shared.ts` are internal
+and not importable.
+
+## Common tasks
+
+Gate a transactional email (no opt-in needed) and a marketing email (opt-in
+needed) for the same contact. Always pass the channel you send on:
+
+```ts
+// convex/gates.ts
+import { Suppression } from "@vllnt/convex-suppression";
+import { v } from "convex/values";
+
+import { components } from "./_generated/api";
+import { internalQuery } from "./_generated/server";
+
+const dnc = new Suppression(components.suppression);
+
+export const canSendReceipt = internalQuery({
+  args: { contactHash: v.string() },
+  returns: v.boolean(),
+  handler: (ctx, { contactHash }) =>
+    dnc.isEligible(ctx, contactHash, { channel: "email" }),
+});
+
+export const canSendPromo = internalQuery({
+  args: { contactHash: v.string() },
+  returns: v.boolean(),
+  handler: (ctx, { contactHash }) =>
+    dnc.isEligible(ctx, contactHash, {
+      channel: "email",
+      listKey: "promotions",
+      requireOptIn: true,
+    }),
+});
+```
+
+Suppress one channel, or every channel, and undo it later. A global entry is the
+one with no channel; `unsuppress` removes only the exact entry you name:
+
+```ts
+// convex/lists.ts
+import { Suppression } from "@vllnt/convex-suppression";
+import { v } from "convex/values";
+
+import { components } from "./_generated/api";
+import { internalMutation } from "./_generated/server";
+
+const dnc = new Suppression(components.suppression);
+
+export const onBounce = internalMutation({
+  args: { contactHash: v.string() },
+  returns: v.null(),
+  handler: (ctx, { contactHash }) =>
+    dnc.suppress(ctx, contactHash, "bounce", { channel: "email" }),
+});
+
+export const blockEverywhere = internalMutation({
+  args: { contactHash: v.string() },
+  returns: v.null(),
+  handler: (ctx, { contactHash }) => dnc.suppress(ctx, contactHash, "manual"),
+});
+
+export const resubscribeEmail = internalMutation({
+  args: { contactHash: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { contactHash }) => {
+    const removedEmail = await dnc.unsuppress(ctx, contactHash, "email");
+    const removedGlobal = await dnc.unsuppress(ctx, contactHash);
+    return removedEmail || removedGlobal;
+  },
+});
+```
+
+Store typed opt-in evidence. `proofValidator` checks `proof` before it is stored
+and again when `getOptInProof` reads it; it must return the value or throw:
+
+```ts
+// convex/optIn.ts
+import { Suppression } from "@vllnt/convex-suppression";
+import { v } from "convex/values";
+
+import { components } from "./_generated/api";
+import { internalMutation, internalQuery } from "./_generated/server";
+
+type Evidence = { ip: string };
+
+const dnc = new Suppression<Evidence>(components.suppression, {
+  proofValidator: (value) => {
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      !("ip" in value) ||
+      typeof value.ip !== "string"
+    ) {
+      throw new Error("Expected { ip: string }");
+    }
+    return { ip: value.ip };
+  },
+});
+
+export const confirm = internalMutation({
   args: { contactHash: v.string(), ip: v.string() },
+  returns: v.null(),
   handler: (ctx, { contactHash, ip }) =>
     dnc.recordOptIn(ctx, contactHash, {
       listKey: "newsletter",
@@ -115,137 +227,264 @@ export const confirmOptIn = internalMutation({
       proof: { ip },
     }),
 });
+
+export const evidence = internalQuery({
+  args: { contactHash: v.string() },
+  returns: v.union(v.null(), v.string()),
+  handler: async (ctx, { contactHash }) => {
+    const proof = await dnc.getOptInProof(ctx, contactHash, "newsletter");
+    return proof?.proof?.ip ?? null;
+  },
+});
 ```
 
-Client options: `new Suppression(component, { proofValidator? })`. Omitting
-`channel`/`listKey` targets the global entry.
+Read why and when a contact was suppressed, for an audit or support screen:
 
-## API Reference
+```ts
+// convex/audit.ts
+import { Suppression } from "@vllnt/convex-suppression";
+import { v } from "convex/values";
 
-| Method                                      | Kind     | Result                                                                                                        |
-| ------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
-| `suppress(ctx, contactHash, reason, opts?)` | mutation | `null` (`reason`: `"unsubscribe" \| "bounce" \| "complaint" \| "manual" \| "global"`; `opts`: `{ channel? }`) |
-| `unsuppress(ctx, contactHash, channel?)`    | mutation | `boolean` (`true` if an entry was removed)                                                                    |
-| `recordOptIn(ctx, contactHash, opts)`       | mutation | `null` (`opts`: `{ listKey?; source; proof? }`)                                                               |
-| `isSuppressed(ctx, contactHash, channel?)`  | query    | `SuppressionView \| null`                                                                                     |
-| `getOptInProof(ctx, contactHash, listKey?)` | query    | `OptInProofView \| null`                                                                                      |
-| `isEligible(ctx, contactHash, opts?)`       | query    | `boolean` (`opts`: `{ channel?; listKey?; requireOptIn? }`)                                                   |
+import { components } from "./_generated/api";
+import { internalQuery } from "./_generated/server";
 
-Full reference: [docs/API.md](docs/API.md).
+const dnc = new Suppression(components.suppression);
 
-## Options and limitations
+export const why = internalQuery({
+  args: { contactHash: v.string(), channel: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({ reason: v.string(), since: v.number() }),
+  ),
+  handler: async (ctx, { contactHash, channel }) => {
+    const entry = await dnc.isSuppressed(ctx, contactHash, channel);
+    return entry === null
+      ? null
+      : { reason: entry.reason, since: entry.createdAt };
+  },
+});
+```
 
-- The only constructor option is `proofValidator`, a parser
-  `(unknown) => TProof`, not `v.*.parse`.
-- A channel-specific check first checks the global `"*"` suppression. Omitting
-  `channel` checks only the global row, not all channel rows. Always pass the
-  send's channel.
-- Opt-in uses an exact `listKey` match: global proof is not a fallback for a
-  named list. `recordOptIn` does not remove suppression; `unsuppress` removes
-  only the exact channel/global row.
-- No TTL, pruning, or cron exists. Suppressions remain until `unsuppress`;
-  opt-in proofs remain and are overwritten on re-recording, with no public
-  delete method.
-- Keys are matched exactly: `contactHash`, `channel`, and `listKey` are case-
-  and whitespace-sensitive, with no trimming or plus-address folding. Normalize
-  them consistently in the host (`"Email"` is not `"email"`).
-- Writes with an empty `contactHash`/`channel`/`listKey`/`source` throw
-  `INVALID_ARGUMENT`; `isEligible` answers `false` for an empty `contactHash` or
-  `channel`, so the gate fails closed.
-- Hashing is host-owned and does not make data automatically anonymous. Proof
-  may contain personal data; minimize it and choose a compliant retention
-  policy. This package is not a legal-compliance guarantee.
-- Mount separately with `app.use(suppression, { name: "marketingDnc" })` and
-  `new Suppression(components.marketingDnc)`.
+Keep separate lists, for example marketing and transactional. Each named mount
+has its own tables:
 
-## Integrations
+```ts
+// convex/convex.config.ts
+import suppression from "@vllnt/convex-suppression/convex.config";
+import { defineApp } from "convex/server";
 
-Backend-only — no `./react` entry. The consumer surface is a server-side
-`isEligible` gate and webhook-driven `suppress` writes; a reactive
-do-not-contact badge, if ever needed, is an ordinary `useQuery` over the host's
-re-exported `isSuppressed` ref.
+const app = defineApp();
+app.use(suppression, { name: "marketingDnc" });
+app.use(suppression, { name: "transactionalDnc" });
+export default app;
+```
 
-## Security
+```ts
+// convex/clients.ts
+import { Suppression } from "@vllnt/convex-suppression";
 
-- **Auth-agnostic** — the host authenticates the caller, decides who may
-  suppress/query a hash, and passes an opaque `contactHash`; tables are
-  sandboxed.
-- **Hash-keyed, never raw PII** — the host hashes and normalizes the contact and
-  owns the salt policy; a suppression survives erasure of the subject.
-- **Server-sourced time** — `createdAt`/`confirmedAt` come from `Date.now()` in
-  each handler, never the caller; the opt-in `proof` is opaque, narrowed by the
-  host validator.
+import { components } from "./_generated/api";
 
-See [docs/API.md](docs/API.md).
+export const marketing = new Suppression(components.marketingDnc);
+export const transactional = new Suppression(components.transactionalDnc);
+```
+
+Hash a contact before you call the component. The package does not do this for
+you. A keyed hash (HMAC) stops anyone who reads the table from hashing guessed
+emails to find a match. Keep the secret on the server, for example in a Convex
+environment variable:
+
+```ts
+// convex/contactHash.ts
+/** HMAC-SHA-256 of the trimmed, lowercased email, as hex. */
+export async function contactHash(
+  email: string,
+  secret: string,
+): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(email.trim().toLowerCase()),
+  );
+  return Array.from(new Uint8Array(signature), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+```
+
+## Errors and fixes
+
+The component throws one coded error: a `ConvexError` whose `data` is
+`{ code, field }`. Catch it in the host with `error instanceof ConvexError` and
+read `error.data.code` and `error.data.field`.
+
+| Code or message                        | Thrown by                                                   | Cause                                                                                                                         | Fix                                                                                                      |
+| -------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `INVALID_ARGUMENT`                     | `suppress`, `recordOptIn`                                   | `field` names the empty string: `contactHash` or `channel` (`suppress`); `contactHash`, `listKey` or `source` (`recordOptIn`) | Check the value before calling. Omit `channel` or `listKey` for the global entry instead of passing `""` |
+| Convex argument validation error       | any method                                                  | An argument has the wrong type, or `reason` is not one of the five `SuppressionReason` values                                 | Pass a `SuppressionReason`; TypeScript catches this at compile time                                      |
+| The error your `proofValidator` throws | `recordOptIn` (before the write), `getOptInProof` (on read) | Your parser rejected `proof`. From `recordOptIn` it is a synchronous throw, not a rejected promise: a try/catch around the call catches it (with or without `await`), and a `.catch()` on the returned promise never runs | Fix the proof, or let the parser accept every shape you have stored before                               |
+
+These never throw `INVALID_ARGUMENT`: `isEligible` returns `false` for an empty
+`contactHash` or `channel`. `isSuppressed` returns `null` for an empty
+`contactHash`; with an empty `channel` it checks only the global entry (it
+returns that entry if one exists, otherwise `null`). `getOptInProof` returns
+`null` for an empty key and `unsuppress` returns `false`. A missing entry is
+`null` or `false`, never an error, and a repeated write updates in place.
+
+## Limits and gotchas
+
+- Omitting `channel` in `isEligible` or `isSuppressed` checks only the global
+  entry, not the channel entries. Always pass the channel you send on.
+- A channel check also matches the global entry, and the global entry wins:
+  `isSuppressed` returns it first.
+- Omitting `channel` (or passing `"*"`) makes an entry global; `reason:
+  "global"` with another channel still blocks only that channel. `reason` never
+  changes the effect.
+- `"*"` is the stored value for "global". Passing `"*"` as a `channel` or
+  `listKey` targets the global entry.
+- `isEligible` checks opt-in only when `requireOptIn: true`; the default is
+  `false`, and `listKey` is ignored without it.
+- Opt-in `listKey` is matched exactly. A global opt-in (no `listKey`) does not
+  satisfy a check for a named list.
+- `recordOptIn` does not remove any suppression. `unsuppress` removes one exact
+  entry: clearing the global entry leaves channel entries, and the reverse.
+- One proof per `(contactHash, listKey)`, the latest. Recording again replaces
+  `source`, `proof` and `confirmedAt`; recording again without `proof` removes
+  the stored proof. There is no history.
+- `proofValidator` runs only when `proof` is set, and its return value is what
+  gets stored. `isEligible` does not run it.
+- Keys are matched exactly, with no trimming, case folding or plus-address
+  folding: `"Email"` is not `"email"`. Normalize contacts, channels and list
+  keys the same way everywhere.
+- Changing your normalization or hash secret changes every hash, so old entries
+  stop matching. Keep the old secret, or re-suppress under the new hashes.
+- An empty `contactHash` or `channel` makes `isEligible` return `false`. For
+  `isSuppressed`, an empty `contactHash` returns `null` (not suppressed), and an
+  empty `channel` checks only the global entry. Use `isEligible` as the gate.
+- No expiry, TTL or cron. Entries stay until `unsuppress`; proofs stay until
+  replaced. There is no method to list entries, export them or delete a proof.
+- `proof` is stored as any Convex value (no functions or class instances) and
+  counts toward Convex's 1 MiB document limit. Hashes and proof can still be
+  personal data; store only what you need.
+- Writes need a context with `runMutation` (a mutation or action); reads need
+  `runQuery` (a query, mutation or action).
+- This package is not a legal-compliance guarantee. Your app owns the legal
+  basis, consent checks, retention and data minimization.
+
+## Compatibility
+
+- Peer dependency: `convex@^1.45.0`. CI runs the tests and the packed-package
+  test on the locked convex version (1.51.0); 1.45.0 is not tested in CI.
+- Node.js: `engines` says `>=18`, but convex needs Node.js 20 or later
+  (1.45–1.48) and Node.js 22 or later (1.49 and newer). ES modules only.
+- The component runs in the default Convex runtime; it needs no `"use node"`.
+- `@vllnt/convex-suppression/test` is TypeScript source and needs `convex-test`,
+  `vitest`, `vite` and `@edge-runtime/vm`, with the Vitest config shown under
+  Testing.
+- React: not applicable. The package is backend-only and has no `./react` entry;
+  to show a status in the UI, call `isSuppressed` from your own query and read
+  it with `useQuery`.
 
 ## Testing
 
-```bash
-pnpm test           # single run
-pnpm test:coverage  # enforced 100% on covered files
-```
-
-Tests run against the real component runtime via `convex-test`
-(`@edge-runtime/vm`), not mocks.
-
-### Testing your app
-
-`@vllnt/convex-suppression/test` exports `register(t, name = "suppression")` to
-mount the component in a `convex-test` instance. It needs `convex-test` and
-`vitest` (with Vite's `import.meta.glob`) in the consuming app:
+Mount the component in your own `convex-test` suite with `register`. Use the
+Vitest settings `convex-test` recommends (edge runtime, `convex-test` inlined):
 
 ```ts
-/// <reference types="vite/client" />
-import { convexTest } from "convex-test";
-import { register } from "@vllnt/convex-suppression/test";
-import schema from "./schema";
+// vitest.config.mts
+import { defineConfig } from "vitest/config";
 
-const t = convexTest(schema, import.meta.glob("./**/*.ts"));
-register(t);
+export default defineConfig({
+  test: {
+    environment: "edge-runtime",
+    server: { deps: { inline: ["convex-test"] } },
+  },
+});
 ```
 
-## For coding agents
+This test uses the Quick start functions and your app's `convex/schema.ts`; if
+you have none, `export default defineSchema({})` from `convex/server` is enough:
 
-The docs are bundled in the package at
-`node_modules/@vllnt/convex-suppression/docs/`, next to `README.md`,
-`CHANGELOG.md`, `llms.txt` and the TypeScript source in `src/`. They match the
-installed version. Read them before writing code.
+```ts
+// convex/email.test.ts
+/// <reference types="vite/client" />
+import { register } from "@vllnt/convex-suppression/test";
+import { convexTest } from "convex-test";
+import { expect, test } from "vitest";
 
-## Documentation
+import { internal } from "./_generated/api";
+import schema from "./schema";
 
-`llms.txt` is the maintained discovery index. `pnpm generate:llms` checks its
-heading and local links without generating a source bundle.
+test("a complaint blocks the newsletter", async () => {
+  const t = convexTest(schema, import.meta.glob("./**/*.ts"));
+  register(t);
+  const contactHash = "hash-of-a-test-contact";
+  const canEmail = () => t.query(internal.email.canEmail, { contactHash });
 
-[API reference](docs/API.md) · [LLM index](llms.txt) ·
-[Security policy](https://github.com/vllnt/convex-suppression/blob/main/SECURITY.md)
+  expect(await canEmail()).toBe(false);
+  await t.mutation(internal.email.confirmOptIn, { contactHash });
+  expect(await canEmail()).toBe(true);
+  await t.mutation(internal.email.onComplaint, { contactHash });
+  expect(await canEmail()).toBe(false);
+});
+```
+
+`register(t, name)` takes the mount name when you used
+`app.use(suppression, { name })`; the default is `"suppression"`.
+
+This repository's own tests run on the simulated `convex-test` runtime, not
+mocks (`pnpm test:coverage`, 100% coverage enforced).
+
+## Security
+
+- The component does not authenticate. Your app decides who may suppress,
+  unsuppress or read a hash. Keep these calls in internal functions, or check
+  auth before them; never take a `contactHash` from an unauthenticated client.
+- Its tables are sandboxed: they are reachable only through the component's
+  functions, and the component reads no host table.
+- Time is set by the server: `createdAt` and `confirmedAt` come from
+  `Date.now()` inside each handler; no method accepts a timestamp.
+- Verify provider webhooks before calling `suppress`, and verify the opt-in
+  (token, checkbox) before calling `recordOptIn`.
+
+Report vulnerabilities as described in
+[SECURITY.md](https://github.com/vllnt/convex-suppression/blob/main/SECURITY.md).
 
 ## Related packages
 
-- [`@vllnt/convex-email`](https://oss.vllnt.com/packages/convex-email) — the
-  outbound email queue. Use it to send; call `isEligible` here before you
-  enqueue a message.
-- [`@vllnt/convex-consent`](https://oss.vllnt.com/packages/convex-consent) — an
-  append-only consent ledger per subject and purpose (GDPR Art. 6/7). Use it for
-  consent to processing with withdrawal and history; use this package for the
-  do-not-contact list that must survive erasure.
-- [`@vllnt/convex-memberships`](https://oss.vllnt.com/packages/convex-memberships)
-  — membership edges. Use it for who is on a subscriber list; this package only
-  records who must never be contacted.
+None. This package has no dependency, shared test or example with another
+package. For packages that solve nearby problems, see
+[When to use](#when-to-use).
 
 ## Contributing
 
 See
 [CONTRIBUTING.md](https://github.com/vllnt/convex-suppression/blob/main/CONTRIBUTING.md).
 
-## Author
+## Links
 
-Built by [bntvllnt](https://github.com/bntvllnt) ·
-[bntvllnt.com](https://bntvllnt.com) · [X @bntvllnt](https://x.com/bntvllnt)
-
-If this is useful, [sponsor the work](https://github.com/sponsors/bntvllnt).
+- Docs and changelog: [oss.vllnt.com/packages/convex-suppression](https://oss.vllnt.com/packages/convex-suppression) · [release feed](https://oss.vllnt.com/packages/convex-suppression/rss.xml)
+- All @vllnt packages: [oss.vllnt.com](https://oss.vllnt.com) · [search packages and docs on index.vllnt.com](https://index.vllnt.com)
+- Source and issues: [GitHub](https://github.com/vllnt/convex-suppression) · [issues](https://github.com/vllnt/convex-suppression/issues) · [npm](https://www.npmjs.com/package/@vllnt/convex-suppression)
+- Questions and updates: [Discord](https://bntvllnt.com/discord) · [X @bntvllnt](https://x.com/bntvllnt)
+- Company and author: [vllnt.com](https://vllnt.com) · [bntvllnt.com](https://bntvllnt.com) · [GitHub @bntvllnt](https://github.com/bntvllnt) · [LinkedIn](https://linkedin.com/in/bntvllnt)
+- Sponsor: [GitHub Sponsors](https://github.com/sponsors/bntvllnt)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
 
-Part of vllnt oss: https://oss.vllnt.com
+[![npm version of @vllnt/convex-suppression](https://img.shields.io/npm/v/@vllnt/convex-suppression.svg)](https://www.npmjs.com/package/@vllnt/convex-suppression)
+[![CI status](https://github.com/vllnt/convex-suppression/actions/workflows/ci.yml/badge.svg)](https://github.com/vllnt/convex-suppression/actions/workflows/ci.yml)
+
+---
+
+Part of [vllnt open source](https://oss.vllnt.com) · [Package page](https://oss.vllnt.com/packages/convex-suppression) · [vllnt.com](https://vllnt.com) · Built by [bntvllnt](https://bntvllnt.com)

@@ -1,7 +1,7 @@
 {
   "name": "@vllnt/convex-suppression",
   "version": "0.1.1",
-  "description": "Do-not-contact suppression list + opt-in proof (GDPR/CAN-SPAM), hash-keyed and channel-aware, as a Convex component",
+  "description": "TypeScript Convex component for a do-not-contact suppression list (GDPR, CAN-SPAM): unsubscribes, bounces and complaints by contact hash, plus opt-in proof.",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.34.9",
@@ -99,12 +99,16 @@
   "keywords": [
     "convex",
     "convex-component",
+    "typescript",
     "suppression",
+    "suppression-list",
     "do-not-contact",
     "unsubscribe",
+    "bounce",
+    "opt-in",
     "gdpr",
     "can-spam",
-    "opt-in"
+    "email"
   ],
   "pnpm": {
     "overrides": {

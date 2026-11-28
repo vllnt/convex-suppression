@@ -36,7 +36,7 @@ src/
     ├── convex.config.ts    # defineComponent("suppression")
     ├── mutations.ts        # suppress, unsuppress, recordOptIn
     ├── queries.ts          # isSuppressed, getOptInProof, isEligible
-    └── validators.ts       # shared validators (suppressionReason, suppressionView, optInProofView, jsonValue)
+    └── validators.ts       # shared validators (suppressionReason, suppressionView, optInProofView, jsonValue) + assertNonEmpty
 ```
 
 Sandboxed tables: `suppressions` — indexed `by_hash_channel` (the exact-channel + global lookups a
@@ -95,7 +95,8 @@ partition (e.g. a separate marketing vs. transactional do-not-contact list).
 
 - **Idempotent writes:** `suppress` and `recordOptIn` update in place on their key tuple rather than
   inserting a duplicate, so a replayed bounce/complaint/confirmation webhook (at-least-once delivery)
-  can never fan the table out. `.unique()` on the key index is the structural guard.
+  can never fan the table out. The read and the write run in one serializable mutation; `.unique()`
+  on the key index throws if a duplicate ever exists.
 
 - **Opt-in proof is legal evidence, not an authz relation:** `optInProofs` records proof-of-consent
   (source, opaque evidence, confirmation time) for a list — kept separate from any access/ReBAC store
@@ -103,7 +104,7 @@ partition (e.g. a separate marketing vs. transactional do-not-contact list).
 
 - **Typed-generic opaque proof, never `v.any()` dumped raw:** opt-in `proof` rides through the single
   documented `jsonValue` alias and is narrowed to `TProof` by a host parser at the client boundary on
-  write and read — no unchecked cast.
+  write and read. Without a parser the value is typed `TProof` but not checked.
 
 - **Server-sourced time:** every handler stamps `createdAt`/`confirmedAt` from `Date.now()`; no API
   surface accepts a caller-supplied timestamp.
@@ -111,7 +112,7 @@ partition (e.g. a separate marketing vs. transactional do-not-contact list).
 - **Backend-only (no `./react` entry):** the consumer surface is a server-side `isEligible` gate before
   a send and webhook-driven `suppress` writes — no user-facing management surface a hook would serve, and
   a secret-free reactive read is an ordinary `useQuery` over the host's re-exported `isSuppressed` ref.
-  Explicit analysis decision (see README); re-run when a real management-surface consumer appears.
+  Explicit analysis decision (see README Compatibility); re-run when a real management-surface consumer appears.
 
 ## Conventions
 
@@ -126,14 +127,18 @@ partition (e.g. a separate marketing vs. transactional do-not-contact list).
 
 | Changed | Update in the same commit |
 |---------|--------------------------|
-| Public API (suppress/unsuppress/recordOptIn/isSuppressed/getOptInProof/isEligible signatures) | README API Reference table, `docs/API.md`, `llms.txt` context |
-| Config options / defaults (proofValidator, reasons, channels) | README API Reference, `docs/API.md` constructor section |
+| Public API (suppress/unsuppress/recordOptIn/isSuppressed/getOptInProof/isEligible signatures) | README `## API` table and examples, `docs/API.md`, `llms.txt` context |
+| Config options / defaults (proofValidator, reasons, channels) | README `## API` and `## Limits and gotchas`, `docs/API.md` `Suppression` section |
 | Schema / tables / indexes | `docs/API.md`, `llms.txt` context, Architecture above |
-| Error codes | `docs/API.md` → `## Error codes` table |
-| `peerDependencies.convex` version | `llms.txt` context line (`convex@^X.Y.Z`), `docs/API.md` Compatibility line, README Installation peer note |
-| Channel / reason semantics | `docs/API.md` mutation sections, Key design decisions above |
+| Error codes | README `## Errors and fixes` table, `docs/API.md` → `## Error codes` table |
+| `peerDependencies.convex` version | `llms.txt` context line (`convex@^X.Y.Z`), `docs/API.md` Compatibility line, README `## Compatibility` |
+| Channel / reason semantics | `docs/API.md` method sections, README `## Limits and gotchas`, Key design decisions above |
 | Shipped files (`package.json` `files`, new `docs/*.md`) | `scripts/package-contents.test.mjs` required list, `publish.yml` `paths` |
-| Any change | `pnpm generate:llms` to validate the `llms.txt` heading and local links |
+| Any change | `pnpm generate:llms` to validate the `llms.txt` heading and local links; `pnpm build && pnpm test:package` runs the docs contract (`scripts/check-documentation.mjs`) |
+
+README section names and order, the Links block, the footer, the `llms.txt` Ecosystem block, the
+shared description sentence, export and error-code coverage and the README examples are enforced by
+`scripts/check-documentation.mjs` (run by `pnpm test:package`). Change the docs, not the check.
 
 Grep old values before committing (e.g. after a `peerDependencies.convex` bump, `git grep "1.41.0"` → only the new range survives).
 
