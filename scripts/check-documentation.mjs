@@ -512,9 +512,13 @@ export function checkDocumentation(installed, consumer) {
       .filter((line) => line.startsWith("|"))
       .join("\n"),
   });
+  // Codes must sit in a table row, not only in prose around the table.
   checkErrorCodes(
     installed,
-    section(parts, "Errors and fixes").body,
+    section(parts, "Errors and fixes")
+      .body.split("\n")
+      .filter((line) => line.startsWith("|"))
+      .join("\n"),
     reference,
   );
   checkLlms(String(texts["llms.txt"]), name);
