@@ -7,7 +7,11 @@
 //   (c) a consumer of every entry point type-checks (nodenext and bundler),
 //   (d) `register(t)` mounts the component (default + named mount) next to a
 //       host schema with its own table, and a suppress/isEligible round trip
-//       works through host functions under Vitest.
+//       works through host functions under Vitest,
+//   (e) the shipped docs meet the docs contract (scripts/check-documentation.mjs),
+//       and every README and docs/ TypeScript example type-checks against the
+//       installed package in a stub Convex host; the README test example runs
+//       under the README's own vitest.config.mts.
 // The consumer project is removed at the end, pass or fail.
 import { execFileSync } from "node:child_process";
 import {
@@ -22,6 +26,12 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import process from "node:process";
+
+import {
+  checkDocumentation,
+  convexHost,
+  writeHost,
+} from "./check-documentation.mjs";
 
 const root = process.cwd();
 const { name, pnpm } = JSON.parse(readFileSync("package.json", "utf8"));
@@ -240,19 +250,23 @@ const fromJs: SuppressionComponent = componentJs;
 void [client, fromJs, config, configJs, register];
 `,
   );
-  write(
-    "vitest.config.mts",
-    `
-import { defineConfig } from "vitest/config";
-
-export default defineConfig({
-  test: {
-    environment: "edge-runtime",
-    server: { deps: { inline: ["convex-test"] } },
-  },
-});
-`,
+  // (e) Docs contract on the installed package, then its examples in a stub
+  // host under readme/. The README's vitest.config.mts is the consumer's config.
+  const installed = join(consumer, "node_modules", name);
+  const examples = checkDocumentation(installed, consumer);
+  const vitestConfig = examples.find(
+    ({ path }) => path === "vitest.config.mts",
   );
+  if (!vitestConfig) {
+    throw new Error("README Testing must show a // vitest.config.mts block");
+  }
+  write("vitest.config.mts", vitestConfig.code);
+  const hostExamples = examples.filter((example) => example !== vitestConfig);
+  const readmeFiles = writeHost(
+    join(consumer, "readme"),
+    convexHost(installed, hostExamples),
+    hostExamples,
+  ).map((file) => join("readme", file));
 
   // (c) The consumer and host type-check under both module resolutions.
   const files = [
@@ -281,9 +295,30 @@ export default defineConfig({
     ]);
   }
 
-  // (d) register + a suppress/isEligible round trip under Vitest.
+  // (e) The docs examples import `./_generated/api` like a Convex app does, so
+  // they type-check under Bundler resolution only.
+  run("pnpm", [
+    "exec",
+    "tsc",
+    "--noEmit",
+    "--strict",
+    "--target",
+    "ES2022",
+    "--module",
+    "ESNext",
+    "--moduleResolution",
+    "Bundler",
+    "--types",
+    "vite/client",
+    ...readmeFiles,
+  ]);
+
+  // (d) register + a suppress/isEligible round trip under Vitest, and (e) the
+  // README test example.
   run("pnpm", ["exec", "vitest", "run"]);
-  console.log("OK    package test: tarball, imports, types and register");
+  console.log(
+    "OK    package test: tarball, imports, types, register and docs contract",
+  );
 } finally {
   rmSync(consumer, { force: true, recursive: true });
 }

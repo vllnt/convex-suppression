@@ -49,6 +49,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `v.object(...).parse`, which Convex validators do not have; it now shows a
   host parser `(unknown) => TProof`.
 
+### Documentation
+
+- README rewritten in the shared @vllnt layout: For coding agents, When to use,
+  Install, Quick start, API (one row per export), Common tasks, Errors and
+  fixes, Limits and gotchas, Compatibility, Testing, Security, Related
+  packages, Contributing, Links, License and the vllnt footer. Badges moved to
+  the end.
+- `docs/API.md` checked against the code: one section per export and per
+  `Suppression` method, the tables and indexes, and newly documented behavior:
+  `"*"` as a `channel` or `listKey` targets the global entry, `reason:
+  "global"` does not make an entry global, recording an opt-in again without
+  `proof` removes the stored proof, the `proofValidator` return value is what
+  is stored, and `isSuppressed` returns `null` for an empty key.
+- `llms.txt` now has the package summary, When to use, a link to the errors
+  table and the shared Ecosystem block.
+- New `package.json` description and keywords, shared by the README and
+  `llms.txt`.
+- TSDoc summaries on every public export, and
+  `@see https://oss.vllnt.com/packages/convex-suppression` on `Suppression`.
+  Comment-only: `dist` changes only in comments and source maps.
+- `pnpm test:package` now runs a docs contract test
+  (`scripts/check-documentation.mjs`) on the installed tarball, and type-checks
+  every README and `docs/API.md` TypeScript example against it; the README test
+  example runs under Vitest.
+
 ## [0.1.0] - 2026-09-01
 
 ### Added
