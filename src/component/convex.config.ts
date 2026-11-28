@@ -1,5 +1,6 @@
 import { defineComponent } from "convex/server";
 
+/** Component definition. Mount it with `app.use(suppression)` in `convex/convex.config.ts`. */
 const component = defineComponent("suppression");
 
 // Nest official child components here, e.g.:
